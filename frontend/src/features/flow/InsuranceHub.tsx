@@ -115,7 +115,7 @@ function HubNav() {
     { icon: User, label: t("Profile"), active: false },
   ];
   return (
-    <nav aria-label={t("Main")} className="fixed inset-x-0 bottom-0 z-40 mx-auto grid w-full max-w-[480px] grid-cols-4 border-t bg-card/95 pt-2 shadow-[0_-4px_16px_rgba(0,46,110,0.08)] backdrop-blur pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+    <nav aria-label={t("Main")} className="fixed inset-x-0 bottom-0 z-40 mx-auto grid w-full max-w-[480px] grid-cols-4 md:hidden border-t bg-card/95 pt-2 shadow-[0_-4px_16px_rgba(0,46,110,0.08)] backdrop-blur pb-[max(0.5rem,env(safe-area-inset-bottom))]">
       {items.map(({ icon: Icon, label, active }) => (
         <span key={label} aria-current={active ? "page" : undefined} className={`flex flex-col items-center gap-0.5 py-1 text-[11px] ${active ? "font-semibold text-navy" : "text-muted-foreground"}`}>
           <Icon className={`size-5 ${active ? "text-brand" : ""}`} aria-hidden /> {label}

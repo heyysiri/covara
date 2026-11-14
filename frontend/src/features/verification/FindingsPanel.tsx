@@ -57,11 +57,11 @@ function FindingCard({ claimId, finding, results, onOpen }: { claimId: string; f
 }
 
 /** Findings from the verification engine, each one opening its evidence trail. */
-export function FindingsPanel({ claimId, results }: { claimId: string; results: AnalysisResults }) {
+export function FindingsPanel({ claimId, results, initialOpenId = null }: { claimId: string; results: AnalysisResults; initialOpenId?: string | null }) {
   const { t } = useI18n();
   const passedL = useLocalized(results.checks_passed);
   const [filter, setFilter] = useState<Filter>("all");
-  const [openId, setOpenId] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<string | null>(initialOpenId);
   const [showPassed, setShowPassed] = useState(false);
   const findings = results.findings;
   const blocking = findings.filter((f) => f.blocking).length;

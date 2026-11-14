@@ -239,7 +239,7 @@ export function ClaimFlow({ initialAmount, source }: { initialAmount?: string; s
     );
 
   return (
-    <AppShell title={t("Your claim check")} onBack={() => setStep("documents")} step={stepInfo} padBottom>
+    <AppShell title={t("Your claim check")} onBack={() => setStep("documents")} step={stepInfo} padBottom wide>
       {analysis.error && <p className="mb-3 rounded-xl border border-destructive/40 bg-red-50 p-3 text-sm text-destructive">{analysis.error}</p>}
       {claimId && analysis.results && (
         <AnalysisView

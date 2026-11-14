@@ -278,7 +278,7 @@ export function EvidenceViewer({
         </Button>
         <h2 className="text-base font-semibold">{t("Why was this flagged?")}</h2>
       </div>
-      <div className="grid gap-3 lg:grid-cols-3">
+      <div className="grid gap-3 lg:grid-cols-[1.3fr_1fr_1fr]">
         <Step n={1} title={t("What the documents say")}>
           <DocumentEvidence claimId={claimId} evidence={finding.evidence} />
         </Step>

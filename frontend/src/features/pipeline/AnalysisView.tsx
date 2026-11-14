@@ -57,6 +57,7 @@ export function AnalysisView({
     ...results.warnings,
   ]);
   const [tab, setTab] = useState<Tab>("todo");
+  const [focus, setFocus] = useState<string | null>(null); // a finding to open straight away on the Findings tab
   const [more, setMore] = useState<More>("extracted");
   const running = results.status === "processing";
   const open = results.findings.filter((f) => f.status === "open");
@@ -73,8 +74,14 @@ export function AnalysisView({
     { id: "more", label: t("More"), icon: MoreHorizontal, badge: reviewCount },
   ];
 
+  function viewEvidence(findingId: string) {
+    setFocus(findingId);
+    setTab("findings");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
   return (
-    <div className="space-y-4">
+    <div className="flex flex-col gap-4">
       {results.status === "failed" && (
         <Alert variant="destructive">
           <AlertTitle>{t("Analysis failed")}</AlertTitle>
@@ -89,7 +96,7 @@ export function AnalysisView({
       )}
 
       {r && tab !== "todo" && (
-        <section className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border px-4 py-3 ${r.cls}`} aria-live="polite">
+        <section className={`md:order-1 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border px-4 py-3 ${r.cls}`} aria-live="polite">
           <r.icon className={`size-5 shrink-0 ${r.icon_cls}`} aria-hidden />
           <span className="font-semibold">{r.label}</span>
           <span className="ml-auto text-xs font-medium opacity-80">
@@ -99,7 +106,7 @@ export function AnalysisView({
       )}
 
       {r && tab === "todo" && (
-        <section className={`rounded-2xl border p-4 ${r.cls}`} aria-live="polite">
+        <section className={`md:order-1 rounded-2xl border p-4 ${r.cls}`} aria-live="polite">
           <div className="flex items-start gap-3">
             <r.icon className={`mt-0.5 size-7 shrink-0 ${r.icon_cls}`} aria-hidden />
             <div className="min-w-0 flex-1">
@@ -127,7 +134,7 @@ export function AnalysisView({
       )}
 
       {results.warnings.length > 0 && (
-        <ul className="space-y-1">
+        <ul className="space-y-1 md:order-2">
           {results.warnings.map((w, i) => (
             <li key={w} className="flex items-start gap-2 text-xs text-muted-foreground">
               <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden /> {warningsL[i]}
@@ -136,9 +143,9 @@ export function AnalysisView({
         </ul>
       )}
 
-      <div role="tabpanel" aria-label={nav.find((n) => n.id === tab)?.label}>
-        {tab === "todo" && <ActionPlan claimId={claimId} results={results} onChange={(action_plan) => onResults({ ...results, action_plan })} />}
-        {tab === "findings" && <FindingsPanel claimId={claimId} results={results} />}
+      <div role="tabpanel" aria-label={nav.find((n) => n.id === tab)?.label} className="md:order-4">
+        {tab === "todo" && <ActionPlan claimId={claimId} results={results} onChange={(action_plan) => onResults({ ...results, action_plan })} onViewEvidence={viewEvidence} />}
+        {tab === "findings" && <FindingsPanel key={focus ?? "list"} claimId={claimId} results={results} initialOpenId={focus} />}
         {tab === "packet" && <PacketPanel claimId={claimId} results={results} />}
         {tab === "more" && (
           <div className="space-y-4">
@@ -167,7 +174,7 @@ export function AnalysisView({
         )}
       </div>
 
-      <p className="pt-2 text-xs text-muted-foreground">
+      <p className="pt-2 text-xs text-muted-foreground md:order-5">
         {aiCalls.length > 0
           ? t("Read with {providers}.", { providers: results.providers_used.join(", ") })
           : t("Read with Covara's rule-based extractor (no AI provider configured).")}{" "}
@@ -176,7 +183,7 @@ export function AnalysisView({
 
       <nav
         aria-label={t("Results")}
-        className="fixed inset-x-0 bottom-0 z-40 mx-auto grid w-full max-w-[480px] grid-cols-4 border-t bg-card/95 pt-1.5 shadow-[0_-4px_16px_rgba(0,46,110,0.08)] backdrop-blur pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto grid w-full max-w-[480px] grid-cols-4 border-t bg-card/95 pt-1.5 shadow-[0_-4px_16px_rgba(0,46,110,0.08)] backdrop-blur pb-[max(0.5rem,env(safe-area-inset-bottom))] md:static md:order-3 md:max-w-none md:rounded-2xl md:border md:bg-card md:p-1 md:shadow-none"
       >
         {nav.map(({ id, label, icon: Icon, badge }) => {
           const on = tab === id;
@@ -185,11 +192,12 @@ export function AnalysisView({
               key={id}
               type="button"
               onClick={() => {
+                setFocus(null);
                 setTab(id);
                 window.scrollTo({ top: 0, behavior: "smooth" });
               }}
               aria-current={on ? "page" : undefined}
-              className={`relative flex flex-col items-center gap-0.5 py-1.5 text-[11px] ${on ? "font-semibold text-navy" : "text-muted-foreground"}`}
+              className={`relative flex flex-col items-center gap-0.5 py-1.5 text-[11px] md:flex-row md:justify-center md:gap-2 md:rounded-xl md:py-3 md:text-sm ${on ? "font-semibold text-navy md:bg-secondary" : "text-muted-foreground md:hover:bg-muted"}`}
             >
               <span className="relative">
                 <Icon className={`size-6 ${on ? "text-brand" : ""}`} aria-hidden />

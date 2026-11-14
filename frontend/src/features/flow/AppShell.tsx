@@ -8,8 +8,9 @@ import { Button } from "@/components/ui/button";
 import { LanguageSelect, useI18n } from "@/i18n";
 
 /**
- * The app frame every screen lives in. Mobile first: full-bleed on a phone; on a laptop it is a centred phone-width
- * column, so the demo reads as "a step inside a mobile app". Header, content, and a fixed bottom bar for the main action.
+ * The frame every screen lives in. Two layouts from one set of components:
+ *  - phone (below the `md` breakpoint, e.g. DevTools device mode): full-bleed, header on top, a fixed bottom bar;
+ *  - desktop (`md` and up): an ordinary website: full-width header band, a centred content area, inline action buttons.
  */
 export function AppShell({
   title,
@@ -21,6 +22,7 @@ export function AppShell({
   padBottom,
   children,
   tall = false,
+  wide = false,
 }: {
   title: string;
   subtitle?: string;
@@ -33,6 +35,8 @@ export function AppShell({
   children: ReactNode;
   /** Taller header with room for a hero (used by the home screen). */
   tall?: boolean;
+  /** Use the full desktop width (results) instead of a readable column (forms). */
+  wide?: boolean;
 }) {
   const { t } = useI18n();
   const back = (
@@ -40,10 +44,11 @@ export function AppShell({
       <ChevronLeft className="size-5" aria-hidden />
     </span>
   );
+  const column = `mx-auto w-full max-w-[480px] px-4 ${wide ? "md:max-w-5xl" : "md:max-w-3xl"} md:px-6`;
   return (
-    <div className="min-h-dvh bg-[#e4eef9] md:py-6">
-      <div className="relative mx-auto flex min-h-dvh w-full max-w-[480px] flex-col overflow-x-clip bg-background md:min-h-[calc(100dvh-3rem)] md:overflow-hidden md:rounded-[2rem] md:border md:shadow-2xl">
-        <header className={`bg-gradient-to-br from-[#002e6e] via-[#04479a] to-[#0a6fc4] px-4 text-white ${tall ? "pb-14 pt-4" : "pb-5 pt-4"}`}>
+    <div className="flex min-h-dvh flex-col bg-background">
+      <header className={`bg-gradient-to-br from-[#002e6e] via-[#04479a] to-[#0a6fc4] text-white ${tall ? "pb-14 pt-4 md:pb-16" : "pb-5 pt-4"}`}>
+        <div className={column}>
           <div className="flex items-center gap-2">
             {onBack ? (
               <button type="button" onClick={onBack} aria-label={t("Back")} className="-ml-1">
@@ -56,12 +61,12 @@ export function AppShell({
             ) : (
               <ShieldCheck className="size-6 text-brand" aria-hidden />
             )}
-            <h1 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight">{title}</h1>
+            <h1 className="min-w-0 flex-1 truncate text-lg font-semibold tracking-tight md:text-xl">{title}</h1>
             <LanguageSelect className="h-8 w-[5.5rem] border-white/30 bg-white/10 text-white [&>option]:text-black" />
           </div>
           {subtitle && <p className="mt-2 text-sm text-white/80">{subtitle}</p>}
           {step && (
-            <div className="mt-4" role="progressbar" aria-valuemin={1} aria-valuemax={step.total} aria-valuenow={step.index}>
+            <div className="mt-4 md:max-w-md" role="progressbar" aria-valuemin={1} aria-valuemax={step.total} aria-valuenow={step.index}>
               <div className="flex gap-1.5">
                 {Array.from({ length: step.total }, (_, i) => (
                   <span key={i} className={`h-1.5 flex-1 rounded-full transition-colors ${i < step.index ? "bg-brand" : "bg-white/25"}`} />
@@ -70,19 +75,21 @@ export function AppShell({
               <p className="mt-1.5 text-xs text-white/70">{t("Step {n} of {m}", { n: step.index, m: step.total })}</p>
             </div>
           )}
-        </header>
-        <main className={`flex-1 px-4 ${tall ? "-mt-8" : "pt-4"} ${bottom || padBottom ? "pb-32" : "pb-10"}`}>{children}</main>
+        </div>
+      </header>
+      <div className={`flex flex-1 flex-col ${column} !px-0`}>
+        <main className={`flex-1 px-4 md:px-6 ${tall ? "-mt-8" : "pt-4 md:pt-8"} ${bottom || padBottom ? "pb-32 md:pb-10" : "pb-10"}`}>{children}</main>
         {bottom}
       </div>
     </div>
   );
 }
 
-/** Fixed action bar at the bottom of the screen, aligned with the app column. */
+/** Fixed action bar at the bottom of a phone screen; an ordinary right-aligned action row on desktop. */
 export function BottomBar({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[480px] border-t bg-card/95 px-4 pt-3 shadow-[0_-4px_16px_rgba(0,46,110,0.08)] backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-      {children}
+    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[480px] border-t bg-card/95 px-4 pt-3 shadow-[0_-4px_16px_rgba(0,46,110,0.08)] backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))] md:static md:max-w-none md:border-0 md:bg-transparent md:px-6 md:pb-12 md:pt-0 md:shadow-none md:backdrop-blur-none">
+      <div className="md:ml-auto md:max-w-xs">{children}</div>
     </div>
   );
 }

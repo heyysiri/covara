@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Building2, Check, Copy, Shield, Stethoscope, User } from "lucide-react";
+import { Building2, Check, Copy, Search, Shield, Stethoscope, User } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,10 +35,13 @@ export function ActionPlan({
   claimId,
   results,
   onChange,
+  onViewEvidence,
 }: {
   claimId: string;
   results: AnalysisResults;
   onChange: (actions: Action[]) => void;
+  /** Jump to the "Why was this flagged?" view of a finding (document, field, clause, reason). */
+  onViewEvidence?: (findingId: string) => void;
 }) {
   const { t } = useI18n();
   const OWNER: Record<Owner, { label: string; icon: typeof User }> = {
@@ -146,6 +149,15 @@ export function ActionPlan({
                     ))}
                     {a.checklist_category && <span>{t("From the document checklist")}</span>}
                   </div>
+                  {onViewEvidence && a.finding_ids.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => onViewEvidence(a.finding_ids[0])}
+                      className="inline-flex h-9 items-center gap-1.5 rounded-full border border-navy/25 bg-card px-3.5 text-sm font-medium text-navy hover:bg-secondary"
+                    >
+                      <Search className="size-4" aria-hidden /> {t("See the evidence")}
+                    </button>
+                  )}
                   {a.draft_message && (
                     <details className="rounded-md bg-muted/50 p-2 text-sm">
                       <summary className="cursor-pointer text-xs font-medium">
