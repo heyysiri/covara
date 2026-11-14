@@ -489,7 +489,8 @@ def v10_room_rent(c: Ctx) -> None:
     pol = c.policy
     if pol is None or pol.room_rent_cap_per_day is None:
         return
-    rate_fields = c.of("room_rent_charged_per_day")
+    # Prefer the itemised bill's own room line. A combined summary line such as "Room rent and nursing" is not a daily rate.
+    rate_fields = sorted(c.of("room_rent_charged_per_day"), key=lambda f: c.doc_type(f) != "itemised_bill")
     rate = parse_amount(rate_fields[0].value) if rate_fields else None
     if rate is None or rate <= 0:
         return
@@ -500,6 +501,12 @@ def v10_room_rent(c: Ctx) -> None:
 
     items = _line_items(c)
     room = _room_line(items, rate, rate_fields[0])
+    defn = pol.associated_expenses  # what THIS policy calls associated expenses
+    fits = any(a / rate >= 1 and abs(a / rate - round(a / rate)) < 0.05 for _, a, _ in items)
+    if items and room is None and not fits:
+        return  # no bill line is a whole number of days at this rate: it was probably misread, so stay silent
+    if room is not None and defn is not None and defn.classify(room[2]) == "associated":
+        return  # a combined line (room + nursing...) cannot tell us the room rate alone
     days: float | None = None
     if room and abs(room[1] / rate - round(room[1] / rate)) < 0.05 and round(room[1] / rate) >= 1:
         days = float(round(room[1] / rate))  # the room line is a whole number of days at that rate
@@ -508,7 +515,6 @@ def v10_room_rent(c: Ctx) -> None:
         if adm and dis and dis[1] > adm[1]:  # type: ignore[operator]
             days = float((dis[1] - adm[1]).days)  # type: ignore[operator]
 
-    defn = pol.associated_expenses  # what THIS policy calls associated expenses
     associated = [] if defn is None else [
         it for it in items if (room is None or it[0] is not room[0]) and defn.classify(it[2]) == "associated"
     ]

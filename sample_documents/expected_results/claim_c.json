@@ -1,0 +1,471 @@
+{
+  "scenario": "claim_c",
+  "title": "Treatment inside the waiting period: cataract surgery 18 days after a new policy began",
+  "synthetic": true,
+  "claim_input": {
+    "domain": "health",
+    "claim_type": "reimbursement",
+    "claimed_amount": 57800,
+    "patient_name": "Kiran Reddy"
+  },
+  "upload_set": [
+    {
+      "file": "policy/claim_c_policy.pdf",
+      "doc_type": "policy",
+      "pages": 6
+    },
+    {
+      "file": "medical/claim_c_final_bill.pdf",
+      "doc_type": "final_bill",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "doc_type": "itemised_bill",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_c_discharge_summary.pdf",
+      "doc_type": "discharge_summary",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_c_payment_receipt.pdf",
+      "doc_type": "payment_receipt",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_c_prescription_RX-5120.pdf",
+      "doc_type": "prescription",
+      "pages": 1
+    }
+  ],
+  "held_back_for_live_fix": [],
+  "expected_fields": [
+    {
+      "key": "policy_number",
+      "value": "SSH-2026-011934",
+      "raw_text": "SSH-2026-011934",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 1,
+      "quote": "SSH-2026-011934"
+    },
+    {
+      "key": "member_id",
+      "value": "M-512208",
+      "raw_text": "M-512208",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 1,
+      "quote": "M-512208"
+    },
+    {
+      "key": "insurer",
+      "value": "Sample Shield Health Insurance Co. Ltd.",
+      "raw_text": "Sample Shield Health Insurance Co. Ltd.",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 1,
+      "quote": "Sample Shield Health Insurance Co. Ltd."
+    },
+    {
+      "key": "policyholder_name",
+      "value": "Kiran Reddy",
+      "raw_text": "Mr. Kiran Reddy",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 1,
+      "quote": "Mr. Kiran Reddy"
+    },
+    {
+      "key": "policy_start",
+      "value": "2026-07-25",
+      "raw_text": "25-Jul-2026",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 1,
+      "quote": "25-Jul-2026 to 24-Jul-2027"
+    },
+    {
+      "key": "policy_end",
+      "value": "2027-07-24",
+      "raw_text": "24-Jul-2027",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 1,
+      "quote": "25-Jul-2026 to 24-Jul-2027"
+    },
+    {
+      "key": "sum_insured",
+      "value": 400000,
+      "raw_text": "Rs. 4,00,000",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 1,
+      "quote": "Rs. 4,00,000"
+    },
+    {
+      "key": "room_rent_cap",
+      "value": 4000,
+      "raw_text": "Rs. 4,000 per day",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 1,
+      "quote": "(Rs. 4,000 per day)"
+    },
+    {
+      "key": "waiting_period",
+      "value": "initial 30 days; pre-existing 36 months; specified conditions 24 months",
+      "raw_text": "Section 5",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 5,
+      "quote": "Claims arising within 30 days from the first policy inception date are not payable"
+    },
+    {
+      "key": "patient_name",
+      "value": "Kiran Reddy",
+      "raw_text": "Kiran Reddy",
+      "file": "medical/claim_c_final_bill.pdf",
+      "page": 1,
+      "quote": "Kiran Reddy"
+    },
+    {
+      "key": "hospital_name",
+      "value": "Harbour Eye and Surgical Centre",
+      "raw_text": "Harbour Eye and Surgical Centre",
+      "file": "medical/claim_c_final_bill.pdf",
+      "page": 1,
+      "quote": "Harbour Eye and Surgical Centre"
+    },
+    {
+      "key": "bill_number",
+      "value": "HES-2026-08-04418",
+      "raw_text": "HES-2026-08-04418",
+      "file": "medical/claim_c_final_bill.pdf",
+      "page": 1,
+      "quote": "HES-2026-08-04418"
+    },
+    {
+      "key": "bill_date",
+      "value": "2026-08-13",
+      "raw_text": "13-Aug-2026",
+      "file": "medical/claim_c_final_bill.pdf",
+      "page": 1,
+      "quote": "13-Aug-2026"
+    },
+    {
+      "key": "bill_total",
+      "value": 57800,
+      "raw_text": "Rs. 57,800.00",
+      "file": "medical/claim_c_final_bill.pdf",
+      "page": 1,
+      "quote": "TOTAL PAYABLE: Rs. 57,800.00"
+    },
+    {
+      "key": "policy_number",
+      "value": "SSH-2026-011934",
+      "raw_text": "SSH-2026-011934",
+      "file": "medical/claim_c_final_bill.pdf",
+      "page": 1,
+      "quote": "SSH-2026-011934"
+    },
+    {
+      "key": "member_id",
+      "value": "M-512208",
+      "raw_text": "M-512208",
+      "file": "medical/claim_c_final_bill.pdf",
+      "page": 1,
+      "quote": "M-512208"
+    },
+    {
+      "key": "bill_number",
+      "value": "HES-2026-08-04418",
+      "raw_text": "HES-2026-08-04418",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "HES-2026-08-04418"
+    },
+    {
+      "key": "admission_date",
+      "value": "2026-08-12",
+      "raw_text": "12-Aug-2026",
+      "file": "medical/claim_c_discharge_summary.pdf",
+      "page": 1,
+      "quote": "12-Aug-2026"
+    },
+    {
+      "key": "discharge_date",
+      "value": "2026-08-13",
+      "raw_text": "13-Aug-2026",
+      "file": "medical/claim_c_discharge_summary.pdf",
+      "page": 1,
+      "quote": "13-Aug-2026"
+    },
+    {
+      "key": "diagnosis",
+      "value": "Cataract, right eye",
+      "raw_text": "Cataract, right eye",
+      "file": "medical/claim_c_discharge_summary.pdf",
+      "page": 1,
+      "quote": "Diagnosis: Cataract, right eye"
+    },
+    {
+      "key": "treatment",
+      "value": "Phacoemulsification with intraocular lens implant",
+      "raw_text": "Phacoemulsification with intraocular lens implant performed on 12-Aug-2026",
+      "file": "medical/claim_c_discharge_summary.pdf",
+      "page": 1,
+      "quote": "Phacoemulsification with intraocular lens implant performed on 12-Aug-2026"
+    },
+    {
+      "key": "policy_number",
+      "value": "SSH-2026-011934",
+      "raw_text": "SSH-2026-011934",
+      "file": "medical/claim_c_discharge_summary.pdf",
+      "page": 1,
+      "quote": "SSH-2026-011934"
+    },
+    {
+      "key": "member_id",
+      "value": "M-512208",
+      "raw_text": "M-512208",
+      "file": "medical/claim_c_discharge_summary.pdf",
+      "page": 1,
+      "quote": "M-512208"
+    },
+    {
+      "key": "referenced_document",
+      "value": "prescription RX-5120",
+      "raw_text": "prescription no. RX-5120",
+      "file": "medical/claim_c_discharge_summary.pdf",
+      "page": 1,
+      "quote": "As per prescription no. RX-5120"
+    },
+    {
+      "key": "room_rent_charged_per_day",
+      "value": 3500,
+      "raw_text": "Room rent - day-care ward",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Room rent - day-care ward"
+    },
+    {
+      "key": "receipt_amount",
+      "value": 57800,
+      "raw_text": "Rs. 57,800.00",
+      "file": "medical/claim_c_payment_receipt.pdf",
+      "page": 1,
+      "quote": "AMOUNT RECEIVED: Rs. 57,800.00"
+    },
+    {
+      "key": "receipt_date",
+      "value": "2026-08-13",
+      "raw_text": "13-Aug-2026",
+      "file": "medical/claim_c_payment_receipt.pdf",
+      "page": 1,
+      "quote": "13-Aug-2026"
+    },
+    {
+      "key": "patient_name",
+      "value": "Kiran Reddy",
+      "raw_text": "Kiran Reddy",
+      "file": "medical/claim_c_payment_receipt.pdf",
+      "page": 1,
+      "quote": "Kiran Reddy"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Room rent - day-care ward",
+        "qty": 1,
+        "rate": 3500,
+        "amount": 3500
+      },
+      "raw_text": "Room rent - day-care ward",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Room rent - day-care ward"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Nursing charges",
+        "qty": 1,
+        "rate": 800,
+        "amount": 800
+      },
+      "raw_text": "Nursing charges",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Nursing charges"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Surgeon fee",
+        "qty": 1,
+        "rate": 22000,
+        "amount": 22000
+      },
+      "raw_text": "Surgeon fee",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Surgeon fee"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Anaesthetist fee",
+        "qty": 1,
+        "rate": 4000,
+        "amount": 4000
+      },
+      "raw_text": "Anaesthetist fee",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Anaesthetist fee"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Operation theatre charges",
+        "qty": 1,
+        "rate": 9000,
+        "amount": 9000
+      },
+      "raw_text": "Operation theatre charges",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Operation theatre charges"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Intraocular lens (implant)",
+        "qty": 1,
+        "rate": 12000,
+        "amount": 12000
+      },
+      "raw_text": "Intraocular lens (implant)",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Intraocular lens (implant)"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Medicines and eye drops",
+        "qty": 1,
+        "rate": 3200,
+        "amount": 3200
+      },
+      "raw_text": "Medicines and eye drops",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Medicines and eye drops"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Diagnostics (eye scans)",
+        "qty": 1,
+        "rate": 2500,
+        "amount": 2500
+      },
+      "raw_text": "Diagnostics (eye scans)",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Diagnostics (eye scans)"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Registration and miscellaneous",
+        "qty": 1,
+        "rate": 800,
+        "amount": 800
+      },
+      "raw_text": "Registration and miscellaneous",
+      "file": "medical/claim_c_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Registration and miscellaneous"
+    }
+  ],
+  "expected_findings": [
+    {
+      "id": "C-F1",
+      "rule_id": "V11",
+      "issue_type": "waiting_period_conflict",
+      "kind": "possible",
+      "severity": "high",
+      "blocking": false,
+      "title": "The treatment date may fall inside a policy waiting period",
+      "extracted_value": "18 days",
+      "comparison_value": "730 days",
+      "evidence": [
+        {
+          "file": "medical/claim_c_discharge_summary.pdf",
+          "page": 1,
+          "quote": "12-Aug-2026"
+        },
+        {
+          "file": "policy/claim_c_policy.pdf",
+          "page": 1,
+          "quote": "25-Jul-2026 to 24-Jul-2027"
+        },
+        {
+          "file": "policy/claim_c_policy.pdf",
+          "page": 5,
+          "quote": "Cataract, hernia, hysterectomy and joint replacement are covered only after 24 months of continuous coverage"
+        }
+      ],
+      "clause": {
+        "file": "policy/claim_c_policy.pdf",
+        "page": 5,
+        "clause_ref": "5.3",
+        "type": "waiting_period",
+        "quote": "Cataract, hernia, hysterectomy and joint replacement are covered only after 24 months of continuous coverage"
+      },
+      "exposure_amount": null,
+      "fix": "Ask the insurer how the waiting period applies to this treatment.",
+      "owner": "insurer",
+      "waiting": {
+        "elapsed_days": 18,
+        "name": "Specified conditions",
+        "days": 730,
+        "quote": "Cataract, hernia, hysterectomy and joint replacement are covered only after 24 months of continuous coverage",
+        "clause_ref": "5.3",
+        "all": [
+          "Initial waiting period",
+          "Specified conditions"
+        ]
+      }
+    }
+  ],
+  "expected_checks_passed": [
+    "Admission date is not after discharge date",
+    "Admission and discharge fall inside the policy period",
+    "Policy number and member ID agree across policy, bill and discharge summary",
+    "Line items add up to the bill total (57800)",
+    "Receipt amount equals the bill total",
+    "All required documents for a reimbursement claim are present",
+    "Bill total matches the claimed amount",
+    "Room rent per day is within the policy limit",
+    "No duplicate files or repeated invoices found",
+    "Patient name is consistent across the documents"
+  ],
+  "expected_checklist": {
+    "required_present": [
+      "policy",
+      "final_bill",
+      "itemised_bill",
+      "discharge_summary",
+      "payment_receipt"
+    ],
+    "required_missing": [],
+    "referenced_but_missing": []
+  },
+  "expected_readiness": "needs_attention",
+  "expected_packet_status": "Prepared for submission",
+  "demo_fix_sequence": [],
+  "after_fix": {
+    "expected_packet_status": "Prepared for submission",
+    "expected_open_findings": [
+      "C-F1"
+    ],
+    "expected_blocking_count": 0
+  }
+}

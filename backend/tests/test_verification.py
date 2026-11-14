@@ -587,3 +587,29 @@ def test_critical_fields_and_review_threshold_are_the_pipelines_shared_values():
     from app.schemas.results import CRITICAL_KEYS, REVIEW_THRESHOLD
 
     assert DEFAULT_CONFIG.critical_keys == frozenset(CRITICAL_KEYS) and DEFAULT_CONFIG.low_confidence == REVIEW_THRESHOLD
+
+
+# ---------------------------------------------------------------- regression: a misread room rate must not raise V10
+DAYCARE = [("Room rent - day-care ward", 3500), ("Nursing charges", 800), ("Surgeon fee", 22000), ("Medicines", 3200)]
+
+
+def test_v10_prefers_the_itemised_rooms_own_rate_over_a_combined_summary_line():
+    """Seen in a real run: the final bill's 'Room rent and nursing 4,300' was read as a daily room rate."""
+    fields = line_items(DAYCARE) + [ef("room_rent_charged_per_day", 4300, "fb"), ef("room_rent_charged_per_day", 3500, "ib")]
+    assert not find(run(fields, ALL_DOCS, policy(cap=4000.0)), "V10")  # 3,500 is within the 4,000 limit
+
+
+def test_v10_is_silent_when_the_only_rate_matches_no_bill_line():
+    fields = line_items(DAYCARE) + [ef("room_rent_charged_per_day", 4300, "fb")]
+    assert not find(run(fields, ALL_DOCS, policy(cap=4000.0)), "V10")
+
+
+def test_v10_skips_a_room_line_combined_with_another_charge():
+    fields = line_items([("Room rent and nursing", 4300), ("Surgeon fee", 22000)]) + [ef("room_rent_charged_per_day", 4300, "ib", raw="Room rent and nursing")]
+    assert not find(run(fields, ALL_DOCS, policy(cap=4000.0)), "V10")  # nursing is an associated charge in this policy
+
+
+def test_v10_still_fires_for_a_genuine_excess():
+    fields = line_items([("Room rent - private room", 15000), ("Nursing charges", 3000)]) + [ef("room_rent_charged_per_day", 5000, "ib")]
+    (f,) = find(run(fields, ALL_DOCS, policy(cap=4000.0)), "V10")
+    assert f.explanation.inputs["days"] == 3 and f.exposure_amount is not None

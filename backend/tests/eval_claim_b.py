@@ -47,7 +47,9 @@ def main() -> int:
 
     s = get_settings()
     tmp = Path(tempfile.mkdtemp(prefix="covara-eval-"))
-    s.upload_dir, s.cache_dir = tmp / "uploads", tmp / "cache"
+    s.upload_dir = tmp / "uploads"
+    if "--fresh" in sys.argv or "--rules" in sys.argv:  # default: reuse backend/.cache so re-runs cost no model calls
+        s.cache_dir = tmp / "cache"
     if "--rules" in sys.argv:
         s.anthropic_api_key = s.gemini_api_key = s.groq_api_key = ""
         s.claude_use_cli = False

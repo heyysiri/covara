@@ -1,0 +1,381 @@
+{
+  "scenario": "claim_a",
+  "title": "Clean claim: every document agrees, nothing should be flagged",
+  "synthetic": true,
+  "claim_input": {
+    "domain": "health",
+    "claim_type": "reimbursement",
+    "claimed_amount": 32300,
+    "patient_name": "Anita Verma"
+  },
+  "upload_set": [
+    {
+      "file": "policy/claim_a_policy.pdf",
+      "doc_type": "policy",
+      "pages": 6
+    },
+    {
+      "file": "medical/claim_a_final_bill.pdf",
+      "doc_type": "final_bill",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_a_itemised_bill.pdf",
+      "doc_type": "itemised_bill",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_a_discharge_summary.pdf",
+      "doc_type": "discharge_summary",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_a_payment_receipt.pdf",
+      "doc_type": "payment_receipt",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_a_prescription_RX-3302.pdf",
+      "doc_type": "prescription",
+      "pages": 1
+    }
+  ],
+  "held_back_for_live_fix": [],
+  "expected_fields": [
+    {
+      "key": "policy_number",
+      "value": "SSH-2026-007812",
+      "raw_text": "SSH-2026-007812",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 1,
+      "quote": "SSH-2026-007812"
+    },
+    {
+      "key": "member_id",
+      "value": "M-440117",
+      "raw_text": "M-440117",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 1,
+      "quote": "M-440117"
+    },
+    {
+      "key": "insurer",
+      "value": "Sample Shield Health Insurance Co. Ltd.",
+      "raw_text": "Sample Shield Health Insurance Co. Ltd.",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 1,
+      "quote": "Sample Shield Health Insurance Co. Ltd."
+    },
+    {
+      "key": "policyholder_name",
+      "value": "Anita Verma",
+      "raw_text": "Ms. Anita Verma",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 1,
+      "quote": "Ms. Anita Verma"
+    },
+    {
+      "key": "policy_start",
+      "value": "2026-06-15",
+      "raw_text": "15-Jun-2026",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 1,
+      "quote": "15-Jun-2026 to 14-Jun-2027"
+    },
+    {
+      "key": "policy_end",
+      "value": "2027-06-14",
+      "raw_text": "14-Jun-2027",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 1,
+      "quote": "15-Jun-2026 to 14-Jun-2027"
+    },
+    {
+      "key": "sum_insured",
+      "value": 300000,
+      "raw_text": "Rs. 3,00,000",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 1,
+      "quote": "Rs. 3,00,000"
+    },
+    {
+      "key": "room_rent_cap",
+      "value": 3000,
+      "raw_text": "Rs. 3,000 per day",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 1,
+      "quote": "(Rs. 3,000 per day)"
+    },
+    {
+      "key": "waiting_period",
+      "value": "initial 30 days; pre-existing 36 months; specified conditions 24 months",
+      "raw_text": "Section 5",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 5,
+      "quote": "Claims arising within 30 days from the first policy inception date are not payable"
+    },
+    {
+      "key": "patient_name",
+      "value": "Anita Verma",
+      "raw_text": "Anita Verma",
+      "file": "medical/claim_a_final_bill.pdf",
+      "page": 1,
+      "quote": "Anita Verma"
+    },
+    {
+      "key": "hospital_name",
+      "value": "Lakeview General Hospital",
+      "raw_text": "Lakeview General Hospital",
+      "file": "medical/claim_a_final_bill.pdf",
+      "page": 1,
+      "quote": "Lakeview General Hospital"
+    },
+    {
+      "key": "bill_number",
+      "value": "LGH-2026-09-22031",
+      "raw_text": "LGH-2026-09-22031",
+      "file": "medical/claim_a_final_bill.pdf",
+      "page": 1,
+      "quote": "LGH-2026-09-22031"
+    },
+    {
+      "key": "bill_date",
+      "value": "2026-09-08",
+      "raw_text": "08-Sep-2026",
+      "file": "medical/claim_a_final_bill.pdf",
+      "page": 1,
+      "quote": "08-Sep-2026"
+    },
+    {
+      "key": "bill_total",
+      "value": 32300,
+      "raw_text": "Rs. 32,300.00",
+      "file": "medical/claim_a_final_bill.pdf",
+      "page": 1,
+      "quote": "TOTAL PAYABLE: Rs. 32,300.00"
+    },
+    {
+      "key": "policy_number",
+      "value": "SSH-2026-007812",
+      "raw_text": "SSH-2026-007812",
+      "file": "medical/claim_a_final_bill.pdf",
+      "page": 1,
+      "quote": "SSH-2026-007812"
+    },
+    {
+      "key": "member_id",
+      "value": "M-440117",
+      "raw_text": "M-440117",
+      "file": "medical/claim_a_final_bill.pdf",
+      "page": 1,
+      "quote": "M-440117"
+    },
+    {
+      "key": "bill_number",
+      "value": "LGH-2026-09-22031",
+      "raw_text": "LGH-2026-09-22031",
+      "file": "medical/claim_a_itemised_bill.pdf",
+      "page": 1,
+      "quote": "LGH-2026-09-22031"
+    },
+    {
+      "key": "admission_date",
+      "value": "2026-09-05",
+      "raw_text": "05-Sep-2026",
+      "file": "medical/claim_a_discharge_summary.pdf",
+      "page": 1,
+      "quote": "05-Sep-2026"
+    },
+    {
+      "key": "discharge_date",
+      "value": "2026-09-08",
+      "raw_text": "08-Sep-2026",
+      "file": "medical/claim_a_discharge_summary.pdf",
+      "page": 1,
+      "quote": "08-Sep-2026"
+    },
+    {
+      "key": "diagnosis",
+      "value": "Acute gastroenteritis with dehydration",
+      "raw_text": "Acute gastroenteritis with dehydration",
+      "file": "medical/claim_a_discharge_summary.pdf",
+      "page": 1,
+      "quote": "Diagnosis: Acute gastroenteritis with dehydration"
+    },
+    {
+      "key": "treatment",
+      "value": "Medical management with intravenous fluids",
+      "raw_text": "Medical management with intravenous fluids",
+      "file": "medical/claim_a_discharge_summary.pdf",
+      "page": 1,
+      "quote": "Medical management with intravenous fluids"
+    },
+    {
+      "key": "policy_number",
+      "value": "SSH-2026-007812",
+      "raw_text": "SSH-2026-007812",
+      "file": "medical/claim_a_discharge_summary.pdf",
+      "page": 1,
+      "quote": "SSH-2026-007812"
+    },
+    {
+      "key": "member_id",
+      "value": "M-440117",
+      "raw_text": "M-440117",
+      "file": "medical/claim_a_discharge_summary.pdf",
+      "page": 1,
+      "quote": "M-440117"
+    },
+    {
+      "key": "referenced_document",
+      "value": "prescription RX-3302",
+      "raw_text": "prescription no. RX-3302",
+      "file": "medical/claim_a_discharge_summary.pdf",
+      "page": 1,
+      "quote": "As per prescription no. RX-3302"
+    },
+    {
+      "key": "room_rent_charged_per_day",
+      "value": 2800,
+      "raw_text": "Room rent - semi-private room",
+      "file": "medical/claim_a_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Room rent - semi-private room"
+    },
+    {
+      "key": "receipt_amount",
+      "value": 32300,
+      "raw_text": "Rs. 32,300.00",
+      "file": "medical/claim_a_payment_receipt.pdf",
+      "page": 1,
+      "quote": "AMOUNT RECEIVED: Rs. 32,300.00"
+    },
+    {
+      "key": "receipt_date",
+      "value": "2026-09-08",
+      "raw_text": "08-Sep-2026",
+      "file": "medical/claim_a_payment_receipt.pdf",
+      "page": 1,
+      "quote": "08-Sep-2026"
+    },
+    {
+      "key": "patient_name",
+      "value": "Anita Verma",
+      "raw_text": "Anita Verma",
+      "file": "medical/claim_a_payment_receipt.pdf",
+      "page": 1,
+      "quote": "Anita Verma"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Room rent - semi-private room",
+        "qty": 3,
+        "rate": 2800,
+        "amount": 8400
+      },
+      "raw_text": "Room rent - semi-private room",
+      "file": "medical/claim_a_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Room rent - semi-private room"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Nursing charges",
+        "qty": 3,
+        "rate": 900,
+        "amount": 2700
+      },
+      "raw_text": "Nursing charges",
+      "file": "medical/claim_a_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Nursing charges"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Doctor visits (daily consultation)",
+        "qty": 3,
+        "rate": 1500,
+        "amount": 4500
+      },
+      "raw_text": "Doctor visits (daily consultation)",
+      "file": "medical/claim_a_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Doctor visits (daily consultation)"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "IV fluids and medicines",
+        "qty": 1,
+        "rate": 9800,
+        "amount": 9800
+      },
+      "raw_text": "IV fluids and medicines",
+      "file": "medical/claim_a_itemised_bill.pdf",
+      "page": 1,
+      "quote": "IV fluids and medicines"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Investigations (blood tests)",
+        "qty": 1,
+        "rate": 6400,
+        "amount": 6400
+      },
+      "raw_text": "Investigations (blood tests)",
+      "file": "medical/claim_a_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Investigations (blood tests)"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Registration fee",
+        "qty": 1,
+        "rate": 500,
+        "amount": 500
+      },
+      "raw_text": "Registration fee",
+      "file": "medical/claim_a_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Registration fee"
+    }
+  ],
+  "expected_findings": [],
+  "expected_checks_passed": [
+    "Admission date is not after discharge date",
+    "Admission and discharge fall inside the policy period",
+    "Policy number and member ID agree across policy, bill and discharge summary",
+    "Line items add up to the bill total (32300)",
+    "Receipt amount equals the bill total",
+    "All required documents for a reimbursement claim are present",
+    "Bill total matches the claimed amount",
+    "No waiting-period conflict found",
+    "Room rent per day is within the policy limit",
+    "No duplicate files or repeated invoices found",
+    "Patient name is consistent across the documents"
+  ],
+  "expected_checklist": {
+    "required_present": [
+      "policy",
+      "final_bill",
+      "itemised_bill",
+      "discharge_summary",
+      "payment_receipt"
+    ],
+    "required_missing": [],
+    "referenced_but_missing": []
+  },
+  "expected_readiness": "ready",
+  "expected_packet_status": "Prepared for submission",
+  "demo_fix_sequence": [],
+  "after_fix": {
+    "expected_packet_status": "Prepared for submission",
+    "expected_open_findings": [],
+    "expected_blocking_count": 0
+  }
+}
