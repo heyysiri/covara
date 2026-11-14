@@ -5,6 +5,7 @@ from fastapi.responses import FileResponse
 
 from app.core import llm
 from app.modules.intake.checklist import build_checklist
+from app.core import persistence
 from app.modules.pipeline import runner
 from app.schemas.claim import ClaimOut, ClaimUpdate
 from app.schemas.results import ChecklistItem, DocumentResult
@@ -69,14 +70,7 @@ def delete_document(claim_id: str, document_id: str) -> Response:
 
 @router.delete("/{claim_id}", status_code=204)
 def delete_claim(claim_id: str) -> Response:
-    """Delete my data: files, extracted fields, results, cached model outputs for these files."""
-    claim = _claim(claim_id)
-    hashes = [d.sha256 for d in claim.documents]
-    other_claims_use = set()  # cache is shared by file hash; keep entries another claim still needs
-    for c in claim_store.all_claims():
-        if c.id != claim_id:
-            other_claims_use.update(d.sha256 for d in c.documents)
-    llm.purge_cache_for([h for h in hashes if h not in other_claims_use])
-    runner.forget(claim_id)
-    claim_store.delete_claim(claim_id)
+    """Delete my data: files, extracted fields, results, snapshot and cached model outputs for these files."""
+    _claim(claim_id)
+    persistence.delete_everywhere(claim_id)
     return Response(status_code=204)

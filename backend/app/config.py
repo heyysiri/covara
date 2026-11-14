@@ -39,6 +39,11 @@ class Settings(BaseSettings):
     groq_model: str = ""
     sarvam_api_key: str = ""
 
+    # Local persistence and privacy: claims survive restarts on disk (git-ignored) and expire after a while
+    data_dir: Path = BACKEND_DIR / ".data"
+    persist_claims: bool = True
+    retention_hours: int = 72  # 0 = keep until deleted
+
     # Pipeline
     cache_dir: Path = BACKEND_DIR / ".cache"
     llm_timeout_s: int = 180

@@ -34,6 +34,7 @@ def main() -> int:
     s = get_settings()
     tmp = Path(tempfile.mkdtemp(prefix="covara-eval-"))
     s.upload_dir = tmp / "uploads"
+    s.persist_claims = False  # evals must not leave claims in the real data folder
     if "--fresh" in sys.argv or "--rules" in sys.argv:  # default: reuse backend/.cache so re-runs cost no model calls
         s.cache_dir = tmp / "cache"
     if "--rules" in sys.argv:

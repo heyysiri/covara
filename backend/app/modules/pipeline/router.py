@@ -37,6 +37,9 @@ def _run_and_mark(claim_id: str) -> None:
     if claim:
         ok = runner.get_results(claim_id).status == RunStatus.COMPLETE
         claim.status = ClaimStatus.ANALYZED if ok else ClaimStatus.FAILED
+    from app.core import persistence  # saved here because background work finishes after the response
+
+    persistence.snapshot(claim_id)
 
 
 @router.post("/{claim_id}/analyze", response_model=AnalysisResults, status_code=status.HTTP_202_ACCEPTED)
