@@ -278,7 +278,7 @@ Honest note: ~19 h of MVP-cut work vs ~16 h available. That gap is why the plan 
 
 ---
 
-## 7. Dependencies and build order
+## 7. Dependencies, phases and build order
 
 ```
  Gate 0 contract ----+--> M9 demo data (minimum set) --------+--> M2 extraction --> M3 verification
@@ -293,15 +293,130 @@ Honest note: ~19 h of MVP-cut work vs ~16 h available. That gap is why the plan 
 Critical path: **contract -> demo data -> ingest/extract -> verify -> evidence link -> action plan -> packet.**
 Anything not on this path (Sarvam, Supabase, resolve loop, translation) is optional.
 
-| Hours | Person 1 | Person 2 | Gate (both test together) |
+### Phase overview
+
+Numbering continues from PLAN.md (Phase 0 = environment, Phase 1 = skeleton, both **done**). Times are hours into the 8 h build. A phase is finished only when its **exit check** passes with both people looking at the same running app. Do not start deepening a later phase's work early.
+
+| Phase | Name | Hours | Gate |
 |---|---|---|---|
-| 0:00-0:45 | **Together:** contract freeze + feature-folder migration. Then M8 stubs. | **Together**, then M9 **minimum demo set** (policy, bill, discharge summary). | **G0 (0:45):** contract committed, folders migrated, demo set exists. |
-| 0:45-2:15 | M8 LangGraph with stub nodes returning fixtures, polling API, LLM gateway; M1 | M9 shell + all tabs rendering fixture data; M3 rules on fixtures | **G1 (2:15) Walking skeleton:** upload -> analyze -> every tab shows (mock) data over real HTTP. |
-| 2:15-3:45 | M2 real extraction on the demo set | M3 real rules; M5 finding detail + evidence viewer | **G2 (3:45):** a real finding with a real highlighted bill page. |
-| 3:45-5:15 | M4 policy snapshot + clause retrieval | M5 `link_evidence` + grounding gate (I1, I2) | **G3 (5:15): full USP chain** on the demo finding: evidence -> clause -> issue -> action (action may still be stubbed). |
-| 5:15-6:30 | M6 action plan; M2 inline correction; swap stubs for real in pipeline | M7 report + packet | **G4 (6:30):** real pipeline end to end; both PDFs download. |
-| 6:30-7:00 | Reliability: failure paths, timeouts, logging; Sarvam only if all green | QA script over scenarios; empty/error states | Full workflow tested together. |
-| 7:00-8:00 | Feature freeze at 7:00. Bug fixes. | Polish + demo rehearsal | **Demo-ready.** |
+| 2 | Foundation: contract, layout, demo data | 0:00-0:45 | G0 |
+| 3 | Walking skeleton: everything works on mock data | 0:45-2:15 | G1 |
+| 4 | Real understanding: extraction and first real finding | 2:15-3:45 | G2 |
+| 5 | Policy intelligence and the full USP chain | 3:45-5:15 | G3 |
+| 6 | Action plan, report and claim packet | 5:15-6:30 | G4 |
+| 7 | Hardening and QA | 6:30-7:00 | G5 |
+| 8 | Freeze, polish, demo rehearsal | 7:00-8:00 | Demo-ready |
+| 9 | Optional extras (only if everything above is green) | - | - |
+
+**External dependencies (outside your control, sort these before Phase 2):**
+Gemini API key + a valid `GEMINI_MODEL`; Groq API key + a valid `GROQ_MODEL` (check each provider's current docs for model names); Sarvam key (optional, only needed in Phase 7/9). Without the Gemini key, Phase 4 cannot start.
+
+---
+
+### Phase 2 - Foundation (0:00-0:45) · both people
+
+| | Work |
+|---|---|
+| **Together (first ~30 min)** | Freeze the contract (section 4): schemas in `backend/app/schemas/`, TS mirror in `frontend/src/types/`, decisions D1-D7. Migrate Phase 1 code into the feature-folder layout. Add `claimed_amount` to the claim form/API. Add `langgraph` to `requirements.txt`. |
+| **Person 1** | Verify keys: one working Gemini call and one Groq call through a minimal LLM gateway (`core/llm`). Pipeline package scaffold (M8). |
+| **Person 2** | **Minimum demo set**: synthetic policy (with room-rent clause), final bill, discharge summary (mentions a prescription that is not uploaded) + a draft `expected_results`. Fixture `results.json` in the agreed schema. |
+
+- **Depends on:** nothing inside the project. External: API keys and model names.
+- **Blocks:** *everything.* Specifically Person 2's demo set blocks Phase 4 extraction and Phase 5 policy work; the contract blocks all parallel work.
+- **Exit check (G0):** schemas committed on both sides and the 10 existing backend tests still pass after the migration; demo files and fixture exist; a Gemini and a Groq call each return a response.
+- **USP check:** the `Finding` schema already requires `evidence` (I1) before anyone writes a rule.
+
+### Phase 3 - Walking skeleton (0:45-2:15)
+
+Goal: the **whole app works end to end on mock data**, so later phases only swap stubs for real logic.
+
+| | Work |
+|---|---|
+| **Person 1** | **M8:** LangGraph pipeline with stub nodes that return the fixture; `POST /analyze` (202) and `GET /results` with `stage/progress`; polling hook + progress component. **M1:** checklist endpoint + live checklist UI, `GET /documents/{id}/file`, duplicate warning, `claimed_amount` input. |
+| **Person 2** | **M9 shell:** landing + `/claim/[id]` workspace with all tabs (Documents, Extracted data, Findings, Policy, Action plan, Packet) rendering the fixture, shared loading/error/empty states, disclaimer footer. **M3:** rules engine on fixtures with unit tests (all rule_ids from section 5). |
+
+- **Depends on:** Phase 2 contract + fixture. Handoffs inside the phase: Person 2's fixture `results.json` must be ready in the first ~20 min (Person 1's stubs return it); Person 1's polling hook/results API reaches Person 2 by ~1:15 (until then tabs import the fixture directly).
+- **Blocks:** Phase 4 (real nodes replace stubs), Phase 5 (the evidence viewer needs the file endpoint from M1).
+- **Exit check (G1):** upload -> analyze -> progress stages -> every tab shows mock data over real HTTP; checklist ticks as files upload; rules pass their unit tests on fixtures.
+- **USP check:** the Findings tab already shows evidence for each mock finding.
+
+### Phase 4 - Real understanding (2:15-3:45)
+
+Goal: real documents in, real structured data and the **first real finding** out.
+
+| | Work |
+|---|---|
+| **Person 1** | **M2:** `ingest` (PyMuPDF text per page, scanned detection) and Gemini extraction -> `ExtractedField[]` with page + quote + confidence; Extracted data tab bound to real data. Compare against `expected_results`. |
+| **Person 2** | **M3:** run rules on **real** extracted fields as soon as Person 1's first output lands. **M5 groundwork:** `GET /documents/{id}/pages/{n}/image?highlight=` and the evidence viewer UI (page image with highlighted quote, fallback to plain page). |
+
+- **Depends on:** Phase 2 demo set + working LLM gateway; Phase 3 file endpoint (M1) and the real-data pipeline hook. Handoff: Person 1's first correct fields (target ~3:00) unblock Person 2's real-data run; until then Person 2 keeps using fixtures.
+- **Blocks:** Phase 5 (linking needs real findings with quotes). `ROOM_RENT_VS_LIMIT` waits for Phase 5 (needs M4).
+- **Exit check (G2):** demo bill, discharge summary and receipt give correct fields with page + quote (checked against `expected_results`); the amount-mismatch finding appears from real data and opens a **highlighted bill page**.
+- **USP check:** evidence quotes come from the document, not from the model's imagination (quote must exist in the page text).
+
+### Phase 5 - Policy intelligence and the full USP chain (3:45-5:15)
+
+Goal: complete **document evidence -> policy clause -> issue -> action** for the demo finding.
+
+| | Work |
+|---|---|
+| **Person 1** | **M4:** `index_policy` (sections, policy snapshot: sum insured, room-rent limit, waiting periods, exclusions, required documents, each with page), topic retrieval -> `PolicyClause`, Policy tab real. |
+| **Person 2** | **M5:** `link_evidence` (issue_type -> topic -> `clause_ids`, `explanation{rule, inputs, why_it_matters}`), **grounding gate** (I1, I2), "Why was this flagged?" panel with the clause. Add `ROOM_RENT_VS_LIMIT` once `room_rent_limit` exists. |
+
+- **Depends on:** Phase 4 findings and quotes; Person 1's `PolicyClause` objects. Handoff: Person 2 develops linking against a fixture clause, then swaps in Person 1's real clauses at ~4:30.
+- **Blocks:** Phase 6 (action plan needs findings + clauses; packet's clause annex needs them).
+- **Exit check (G3):** for the demo finding you can click evidence page, then policy clause with correct page, then the explanation. Gate tests: a finding without evidence is rejected; a clause whose text is not on the stated page is dropped and the UI says "no matching clause found".
+- **USP check:** this phase *is* the USP. If G3 fails, stop other work and fix it.
+
+### Phase 6 - Action plan, report and claim packet (5:15-6:30)
+
+| | Work |
+|---|---|
+| **Person 1** | **M6:** grouped, personalised action plan (deterministic groups; Groq phrases text from the finding's own values; every action keeps `finding_ids`). Action plan tab. **M2** inline field correction -> re-run verification only. **M8:** replace every remaining stub with the real node. |
+| **Person 2** | **M7:** Readiness Report PDF (9 sections) and Claim Packet PDF (cover + summary, document index, evidence annex, clause annex, merged originals with bookmarks, wording per D5). Packet tab. |
+
+- **Depends on:** Phase 5 for findings/clauses. Handoff: Person 2 builds both PDFs from the fixture first, then Person 1's `ActionPlan` lands (~6:00) and Person 2 wires it in. Packet also needs the stored originals from M1.
+- **Blocks:** Phase 7 testing; the demo itself.
+- **Exit check (G4):** real pipeline end to end on the demo set; both PDFs download and open correctly; every action cites a finding id; packet says "Draft - N items need review" while findings are open.
+- **USP check:** I3 test: actions without `finding_ids` fail validation.
+
+### Phase 7 - Hardening and QA (6:30-7:00)
+
+| | Work |
+|---|---|
+| **Person 1** | Failure paths: bad/corrupt PDF, Gemini timeout/429/malformed JSON, one document failing while the rest continue; no document content or PII in logs; upload cleanup. Sarvam Vision (time-boxed 30-45 min) **only if G4 was green**. |
+| **Person 2** | QA script running every scenario and diffing `rule_id`s with `expected_results`; **clean-claim run must produce no false alarms**; empty/error/loading states; copy review for I5 and I8 (no "fraud/rejected/approved"; disclaimer everywhere). |
+
+- **Depends on:** Phase 6 complete.
+- **Blocks:** Phase 8.
+- **Exit check (G5):** all scenarios pass; a forced node failure yields a partial result with an honest message; no unresolved crash on bad input.
+
+### Phase 8 - Freeze, polish and demo rehearsal (7:00-8:00)
+
+- **Feature freeze at 7:00.** Bug fixes, responsive/visual polish, README update, two full rehearsals of the 90-second script (section 8), a backup screen recording/screenshots, and one known-good claim kept ready.
+- **Exit check:** someone who did not build it can run the demo from the README.
+
+### Phase 9 - Optional extras (only after Phase 8 is green)
+
+Supabase repository, resolve/re-analyse loop, Sarvam translation, ranking exclusions by diagnosis, extra scenarios.
+
+---
+
+### Cross-person handoffs (the places you can block each other)
+
+| # | Handoff | From -> To | Needed by | If late |
+|---|---|---|---|---|
+| H1 | Contract + decisions | both | Phase 2 end | Nothing else can start - do this first |
+| H2 | Minimum demo documents | P2 -> P1 | Phase 2 end / Phase 4 start | P1 extracts from any public sample PDF meanwhile, but real tuning is blocked |
+| H3 | Fixture `results.json` | P2 -> P1 | Phase 3 +0:20 | P1 writes a tiny fixture from the schema |
+| H4 | Results API + polling hook | P1 -> P2 | Phase 3 +0:30 | P2 imports the fixture directly |
+| H5 | File endpoint (`GET /documents/{id}/file`) | P1 -> P2 | Phase 4 start | P2 reads from `backend/uploads` in dev |
+| H6 | First correct `ExtractedField`s | P1 -> P2 | ~3:00 | P2 keeps running rules on fixtures |
+| H7 | Real `PolicyClause`s + `room_rent_limit` | P1 -> P2 | ~4:30 | P2 links against a fixture clause |
+| H8 | `ActionPlan` | P1 -> P2 | ~6:00 | P2 renders the packet/report without the plan section, adds it later |
+| H9 | Findings with evidence | P2 -> P1 | Phase 5 / 6 | P1 builds M6 on fixture findings |
+
+If a handoff is late by more than ~20 minutes, the receiver switches to the fallback and carries on. Do not wait idle.
 
 ---
 
