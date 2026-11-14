@@ -33,6 +33,7 @@ export interface DocumentOut {
   sha256: string;
   status: "uploaded" | "processing" | "processed" | "failed";
   uploaded_at: string;
+  duplicate_of: string | null;
 }
 
 export interface ClaimOut {
@@ -41,6 +42,9 @@ export interface ClaimOut {
   claim_type: ClaimType;
   status: "created" | "documents_uploaded" | "analyzing" | "analyzed" | "failed";
   created_at: string;
+  claimed_amount: number | null;
+  patient_name: string | null;
+  consent_at: string | null;
   documents: DocumentOut[];
 }
 
@@ -52,6 +56,14 @@ export interface RejectedFile {
 export interface UploadResponse {
   uploaded: DocumentOut[];
   rejected: RejectedFile[];
+  duplicates: DocumentOut[];
+}
+
+export interface ClaimCreate {
+  claim_type: ClaimType;
+  claimed_amount?: number | null;
+  patient_name?: string | null;
+  consent_given: boolean;
 }
 
 export interface HealthResponse {

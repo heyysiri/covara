@@ -46,6 +46,9 @@ class DocumentStatus(str, Enum):
 class ClaimCreate(BaseModel):
     domain: InsuranceDomain = InsuranceDomain.HEALTH
     claim_type: ClaimType = ClaimType.REIMBURSEMENT
+    claimed_amount: float | None = Field(default=None, ge=0)  # INR, as entered on the claim form
+    patient_name: str | None = Field(default=None, max_length=120)
+    consent_given: bool = False  # explicit consent to process the uploaded documents (W7)
 
 
 class DocumentOut(BaseModel):
@@ -58,6 +61,7 @@ class DocumentOut(BaseModel):
     sha256: str
     status: DocumentStatus = DocumentStatus.UPLOADED
     uploaded_at: datetime
+    duplicate_of: str | None = None  # id of an earlier document with the same sha256
 
 
 class ClaimOut(BaseModel):
@@ -66,6 +70,9 @@ class ClaimOut(BaseModel):
     claim_type: ClaimType
     status: ClaimStatus
     created_at: datetime
+    claimed_amount: float | None = None
+    patient_name: str | None = None
+    consent_at: datetime | None = None
     documents: list[DocumentOut] = Field(default_factory=list)
 
 
@@ -77,3 +84,9 @@ class RejectedFile(BaseModel):
 class UploadResponse(BaseModel):
     uploaded: list[DocumentOut]
     rejected: list[RejectedFile]
+    duplicates: list[DocumentOut] = Field(default_factory=list)  # uploaded, but same file seen before
+
+
+class ClaimUpdate(BaseModel):
+    claimed_amount: float | None = Field(default=None, ge=0)
+    patient_name: str | None = Field(default=None, max_length=120)

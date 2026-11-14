@@ -13,7 +13,6 @@ from app.schemas.claim import (
     RejectedFile,
     UploadResponse,
 )
-from app.schemas.results import AnalysisResults
 from app.services import claim_store
 from app.utils.files import (
     ALLOWED_TYPES,
@@ -59,6 +58,7 @@ async def upload_documents(
     settings = get_settings()
     uploaded: list[DocumentOut] = []
     rejected: list[RejectedFile] = []
+    duplicates: list[DocumentOut] = []
 
     for upload in files:
         name = display_filename(upload.filename)
@@ -94,6 +94,8 @@ async def upload_documents(
             rejected.append(RejectedFile(filename=name, reason=reason))
             continue
 
+        digest = sha.hexdigest()
+        earlier = claim_store.find_by_sha(claim, digest)
         document = DocumentOut(
             id=doc_id,
             claim_id=claim.id,
@@ -101,18 +103,21 @@ async def upload_documents(
             category=category,
             content_type=ALLOWED_TYPES[ext][0],
             size_bytes=size,
-            sha256=sha.hexdigest(),
+            sha256=digest,
             uploaded_at=datetime.now(timezone.utc),
+            duplicate_of=earlier.id if earlier else None,
         )
         claim_store.add_document(claim, document)
         uploaded.append(document)
+        if earlier:
+            duplicates.append(document)
 
     if not uploaded:
         raise HTTPException(
             status_code=422,
             detail=[r.model_dump() for r in rejected] or "No files received",
         )
-    return UploadResponse(uploaded=uploaded, rejected=rejected)
+    return UploadResponse(uploaded=uploaded, rejected=rejected, duplicates=duplicates)
 
 
 @router.get("/{claim_id}/documents", response_model=list[DocumentOut])
@@ -120,19 +125,7 @@ def list_documents(claim_id: str) -> list[DocumentOut]:
     return _get_claim_or_404(claim_id).documents
 
 
-# --- Placeholders for later phases (analysis pipeline is NOT part of Phase 1) ---
-
-
-@router.post("/{claim_id}/analyze", status_code=status.HTTP_501_NOT_IMPLEMENTED)
-def analyze_claim(claim_id: str) -> None:
-    _get_claim_or_404(claim_id)
-    raise HTTPException(status_code=501, detail=NOT_IMPLEMENTED)
-
-
-@router.get("/{claim_id}/results", response_model=AnalysisResults)
-def get_results(claim_id: str) -> AnalysisResults:
-    _get_claim_or_404(claim_id)
-    raise HTTPException(status_code=501, detail=NOT_IMPLEMENTED)
+# --- Report / packet are Person 2's module (M7). Analysis routes live in app/modules/pipeline/router.py.
 
 
 @router.get("/{claim_id}/report")

@@ -6,6 +6,7 @@
 # Backend
 backend/.venv/
 backend/uploads/*
+backend/.cache/
 !backend/uploads/.gitkeep
 __pycache__/
 *.py[cod]

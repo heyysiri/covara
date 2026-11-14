@@ -1,5 +1,6 @@
 """In-memory claim store (hackathon scope). Files live on disk under upload_dir/<claim_id>/."""
 
+import shutil
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -26,6 +27,9 @@ def create_claim(payload: ClaimCreate) -> ClaimOut:
         claim_type=payload.claim_type,
         status=ClaimStatus.CREATED,
         created_at=_now(),
+        claimed_amount=payload.claimed_amount,
+        patient_name=(payload.patient_name or "").strip() or None,
+        consent_at=_now() if payload.consent_given else None,
     )
     _claims[claim.id] = claim
     return claim
@@ -35,9 +39,33 @@ def get_claim(claim_id: str) -> ClaimOut | None:
     return _claims.get(claim_id)
 
 
+def all_claims() -> list[ClaimOut]:
+    return list(_claims.values())
+
+
 def add_document(claim: ClaimOut, document: DocumentOut) -> None:
     claim.documents.append(document)
     claim.status = ClaimStatus.DOCUMENTS_UPLOADED
+
+
+def find_by_sha(claim: ClaimOut, sha256: str) -> DocumentOut | None:
+    return next((d for d in claim.documents if d.sha256 == sha256), None)
+
+
+def delete_claim(claim_id: str) -> bool:
+    """Remove the claim and its stored files. Derived data is removed by the caller's hooks."""
+    claim = _claims.pop(claim_id, None)
+    if claim is None:
+        return False
+    path = get_settings().upload_dir / claim_id
+    if path.is_dir():
+        shutil.rmtree(path, ignore_errors=True)
+    return True
+
+
+def document_path(claim_id: str, document: DocumentOut) -> Path:
+    ext = {"application/pdf": ".pdf", "image/png": ".png", "image/jpeg": ".jpg"}[document.content_type]
+    return get_settings().upload_dir / claim_id / f"{document.id}{ext}"
 
 
 def claim_dir(claim_id: str) -> Path:

@@ -1,12 +1,17 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { CheckCircle2, FileText, Loader2, Trash2, UploadCloud, XCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { CheckCircle2, FileText, Loader2, Sparkles, Trash2, UploadCloud, XCircle } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ApiError, createClaim, uploadDocuments } from "@/lib/api";
+import { DeleteClaimButton } from "@/features/intake/DeleteClaimButton";
+import { Checklist } from "@/features/intake/Checklist";
+import { AnalysisView } from "@/features/pipeline/AnalysisView";
+import { useAnalysis } from "@/features/pipeline/useAnalysis";
+import { ApiError, createClaim, getChecklist, updateClaim, uploadDocuments } from "@/lib/api";
+import type { ChecklistItem } from "@/types/results";
 import {
   DOCUMENT_CATEGORIES,
   type ClaimType,
@@ -24,6 +29,7 @@ interface Item {
   category: DocumentCategory;
   status: ItemStatus;
   error?: string;
+  duplicate?: boolean;
 }
 
 function validate(file: File): string | null {
@@ -54,6 +60,25 @@ export function DocumentUpload() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [claimedAmount, setClaimedAmount] = useState("");
+  const [patientName, setPatientName] = useState("");
+  const [consent, setConsent] = useState(false);
+  const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const analysis = useAnalysis(claimId);
+
+  const amountValue = claimedAmount.trim() ? Number(claimedAmount.replace(/[,₹\s]/g, "")) : null;
+
+  useEffect(() => {
+    if (!claimId) return;
+    getChecklist(claimId).then(setChecklist).catch(() => {});
+  }, [claimId, items, analysis.results?.status]);
+
+  function resetAll() {
+    setClaimId(null);
+    setItems([]);
+    setChecklist([]);
+    analysis.setResults(null);
+  }
 
   function addFiles(list: FileList | null) {
     if (!list) return;
@@ -81,7 +106,14 @@ export function DocumentUpload() {
     try {
       let id = claimId;
       if (!id) {
-        id = (await createClaim(claimType)).id;
+        id = (
+          await createClaim({
+            claim_type: claimType,
+            claimed_amount: amountValue,
+            patient_name: patientName.trim() || null,
+            consent_given: consent,
+          })
+        ).id;
         setClaimId(id);
       }
       // One request per category.
@@ -92,9 +124,11 @@ export function DocumentUpload() {
         try {
           const res = await uploadDocuments(id, category, group.map((g) => g.file));
           const rejected = new Map(res.rejected.map((r) => [r.filename, r.reason]));
+          const dupNames = new Set(res.duplicates.map((d) => d.original_filename));
           group.forEach((g) => {
             const reason = [...rejected.entries()].find(([name]) => g.file.name.includes(name))?.[1];
-            patch(g.key, reason ? { status: "rejected", error: reason } : { status: "uploaded" });
+            const duplicate = [...dupNames].some((n) => g.file.name.includes(n.replace(/_/g, " ")) || n === g.file.name);
+            patch(g.key, reason ? { status: "rejected", error: reason } : { status: "uploaded", duplicate });
           });
         } catch (e) {
           const msg = e instanceof ApiError ? e.message : "Upload failed.";
@@ -116,23 +150,66 @@ export function DocumentUpload() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>1. Claim type</CardTitle>
+          <CardTitle>1. Claim details</CardTitle>
           <CardDescription>Health insurance claims are supported in this MVP.</CardDescription>
         </CardHeader>
         <CardContent>
           <label className="sr-only" htmlFor="claim-type">
             Claim type
           </label>
-          <select
-            id="claim-type"
-            value={claimType}
-            disabled={claimId !== null}
-            onChange={(e) => setClaimType(e.target.value as ClaimType)}
-            className="h-9 w-full max-w-xs rounded-md border bg-background px-3 text-sm disabled:opacity-60"
-          >
-            <option value="reimbursement">Reimbursement</option>
-            <option value="cashless">Cashless</option>
-          </select>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <label className="space-y-1 text-xs font-medium">
+              Claim type
+              <select
+                id="claim-type"
+                value={claimType}
+                disabled={claimId !== null}
+                onChange={(e) => setClaimType(e.target.value as ClaimType)}
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm font-normal disabled:opacity-60"
+              >
+                <option value="reimbursement">Reimbursement</option>
+                <option value="cashless">Cashless</option>
+              </select>
+            </label>
+            <label className="space-y-1 text-xs font-medium">
+              Amount you are claiming (₹)
+              <input
+                inputMode="decimal"
+                placeholder="e.g. 95000"
+                value={claimedAmount}
+                onChange={(e) => setClaimedAmount(e.target.value)}
+                onBlur={() => {
+                  if (claimId && (amountValue === null || !Number.isNaN(amountValue)))
+                    updateClaim(claimId, { claimed_amount: amountValue }).catch(() => {});
+                }}
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm font-normal"
+              />
+            </label>
+            <label className="space-y-1 text-xs font-medium">
+              Patient name
+              <input
+                placeholder="As on the policy"
+                value={patientName}
+                onChange={(e) => setPatientName(e.target.value)}
+                onBlur={() => claimId && updateClaim(claimId, { patient_name: patientName.trim() || null }).catch(() => {})}
+                className="h-9 w-full rounded-md border bg-background px-3 text-sm font-normal"
+              />
+            </label>
+          </div>
+          <label className="mt-4 flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={consent}
+              disabled={claimId !== null}
+              onChange={(e) => setConsent(e.target.checked)}
+              className="mt-0.5 size-4 accent-primary"
+            />
+            <span>
+              I consent to Covara processing these documents to prepare my claim. Documents are read by
+              AI providers (Google Gemini, Groq) only to extract claim details, are not used for any
+              other purpose, and can be deleted at any time with &quot;Delete my data&quot;.
+            </span>
+          </label>
         </CardContent>
       </Card>
 
@@ -189,6 +266,9 @@ export function DocumentUpload() {
                     <p className="text-xs text-muted-foreground">
                       {(item.file.size / 1024).toFixed(0)} KB
                       {item.error && <span className="ml-2 text-destructive">{item.error}</span>}
+                      {item.duplicate && (
+                        <span className="ml-2 text-amber-600">Same file already uploaded (possible duplicate)</span>
+                      )}
                     </p>
                   </div>
                   <select
@@ -228,18 +308,27 @@ export function DocumentUpload() {
           )}
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={submit} disabled={busy || stagedCount === 0}>
+            <Button onClick={submit} disabled={busy || stagedCount === 0 || !consent}>
               {busy && <Loader2 className="animate-spin" />}
               {claimId ? "Upload more documents" : "Create claim & upload"}
               {stagedCount > 0 && ` (${stagedCount})`}
             </Button>
+            {!consent && stagedCount > 0 && (
+              <span className="text-xs text-muted-foreground">Tick the consent box above to upload.</span>
+            )}
             {claimId && (
               <span className="text-xs text-muted-foreground">
                 Claim session <code className="font-mono">{claimId.slice(0, 8)}</code> ·{" "}
                 {uploadedCount} uploaded
               </span>
             )}
+            {claimId && (
+              <span className="ml-auto">
+                <DeleteClaimButton claimId={claimId} onDeleted={resetAll} />
+              </span>
+            )}
           </div>
+          {claimId && !analysis.results?.documents.length && <Checklist items={checklist} />}
         </CardContent>
       </Card>
 
@@ -247,12 +336,35 @@ export function DocumentUpload() {
         <CardHeader>
           <CardTitle>3. Analyse</CardTitle>
           <CardDescription>
-            Extraction, cross-document checks and the claim-readiness report arrive in the next
-            phases.
+            Covara reads every document, checks it against your policy and builds an action plan.
+            Each value links back to the page it came from.
           </CardDescription>
         </CardHeader>
-        <CardContent>
-          <Button disabled>Analyse claim (coming soon)</Button>
+        <CardContent className="space-y-4">
+          {!analysis.results?.documents.length && (
+            <Button
+              onClick={analysis.start}
+              disabled={!claimId || uploadedCount === 0 || analysis.running || busy}
+            >
+              {analysis.running ? <Loader2 className="animate-spin" /> : <Sparkles />}
+              {analysis.running ? "Analysing…" : "Analyse claim"}
+            </Button>
+          )}
+          {analysis.error && (
+            <Alert variant="destructive">
+              <AlertTitle>Could not analyse</AlertTitle>
+              <AlertDescription>{analysis.error}</AlertDescription>
+            </Alert>
+          )}
+          {claimId && analysis.results && (
+            <AnalysisView
+              claimId={claimId}
+              results={analysis.results}
+              onRecheck={analysis.start}
+              onReview={analysis.review}
+              onResults={analysis.setResults}
+            />
+          )}
         </CardContent>
       </Card>
     </div>

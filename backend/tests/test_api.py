@@ -27,7 +27,7 @@ def test_health(client):
     assert r.status_code == 200
     body = r.json()
     assert body["status"] == "ok"
-    assert set(body["providers_configured"]) == {"gemini", "groq", "sarvam"}
+    assert set(body["providers_configured"]) == {"claude", "gemini", "groq", "sarvam"}
 
 
 def test_cors_preflight_allows_frontend(client):
@@ -123,8 +123,8 @@ def test_invalid_category(client):
     assert r.status_code == 422
 
 
-def test_pipeline_endpoints_are_501(client):
+def test_analyze_needs_documents_and_report_is_501(client):
     cid = _claim(client)
-    assert client.post(f"/claims/{cid}/analyze").status_code == 501
-    assert client.get(f"/claims/{cid}/results").status_code == 501
+    assert client.post(f"/claims/{cid}/analyze").status_code == 422
+    assert client.get(f"/claims/{cid}/results").json()["status"] == "idle"
     assert client.get(f"/claims/{cid}/report").status_code == 501

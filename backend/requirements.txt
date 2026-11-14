@@ -11,9 +11,13 @@ pymupdf>=1.24
 reportlab>=4.2
 
 # AI providers (all optional at runtime; keys are read from .env)
+anthropic>=2.8
 google-genai>=1.0
 groq>=0.11
 sarvamai>=0.1
+
+# Pipeline orchestration
+langgraph>=1.0
 
 # HTTP client (also used by FastAPI TestClient)
 httpx>=0.27
