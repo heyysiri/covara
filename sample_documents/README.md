@@ -43,7 +43,23 @@ Expected readiness: `needs_attention`; packet: "INCOMPLETE - 3 blocking items". 
 backend/.venv/bin/python sample_documents/tools/generate_claim_b.py
 ```
 
+## Claims A and C (generated from data by `tools/claimgen`)
+
+| Claim | What it tests | Expected result |
+|---|---|---|
+| **A** `claim_a_upload.zip` | A clean claim whose policy is worded differently from B. Every document agrees. | **No findings at all** (the false-alarm test), packet "Prepared for submission", readiness ready |
+| **C** `claim_c_upload.zip` | Cataract surgery 18 days after a new policy began. | One finding: **V11 waiting period** (18 days into a 730-day "specified conditions" period), non-blocking; packet "Prepared for submission", readiness needs attention |
+
+`claimgen` is data-driven: a claim is a `Scenario` (people, policy wording, bill lines, and the defects deliberately planted) in `tools/claimgen/scenarios.py`. The PDFs, the expected fields and the expected findings are all derived from it, and every quote is checked against the page it names. It reproduces claim B's PDFs byte for byte, which is the proof that nothing in it is specific to one claim.
+
+```bash
+cd sample_documents/tools && ../../backend/.venv/bin/python -m claimgen a     # or b, c
+cd backend && .venv/bin/python -m tests.eval_claims a                          # full pipeline vs the ground truth (a or c)
+cd backend && .venv/bin/python -m tests.eval_claim_b                           # claim B, including the fix sequence
+```
+
+The evals use the low-cost model and reuse `backend/.cache`, so re-runs cost nothing; add `--fresh` for a true re-measure.
+
 ## Still to make
 
-- Claim A (clean claim, must produce no false alarms).
-- Claim C (waiting-period conflict, plus one Hindi/Telugu document and one handwritten prescription for Sarvam).
+- A Hindi/Telugu document and a handwritten prescription (for Sarvam Vision).

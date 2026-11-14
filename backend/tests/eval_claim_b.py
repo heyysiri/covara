@@ -47,7 +47,9 @@ def main() -> int:
 
     s = get_settings()
     tmp = Path(tempfile.mkdtemp(prefix="covara-eval-"))
-    s.upload_dir, s.cache_dir = tmp / "uploads", tmp / "cache"
+    s.upload_dir = tmp / "uploads"
+    if "--fresh" in sys.argv or "--rules" in sys.argv:  # default: reuse backend/.cache so re-runs cost no model calls
+        s.cache_dir = tmp / "cache"
     if "--rules" in sys.argv:
         s.anthropic_api_key = s.gemini_api_key = s.groq_api_key = ""
         s.claude_use_cli = False
@@ -109,13 +111,21 @@ def main() -> int:
     # Findings (produced by Person 2's engine through the pipeline) vs ground truth.
     exp_f = {f["rule_id"] + ":" + f["issue_type"]: f for f in truth["expected_findings"]}
     got_f = {f.rule_id + ":" + f.issue_type: f for f in results.findings}
-    implemented = {"V1", "V2", "V3", "V4", "V5", "V7", "V14"}  # engine rules that exist today
+    implemented = {"V1", "V2", "V3", "V4", "V5", "V7", "V10", "V11", "V14"}  # engine rules that exist today
     finding_checks = {}
     for key, f in exp_f.items():
         if f["rule_id"] in implemented:
             g = got_f.get(key)
             finding_checks[f"{f['id']} {key} found" + (" (blocking)" if f["blocking"] else "")] = bool(
                 g and g.blocking == f["blocking"])
+    v10 = got_f.get("V10:room_rent_above_cap")
+    want_exposure = next((f["exposure_amount"] for f in exp_f.values() if f["rule_id"] == "V10"), None)
+    finding_checks["B-F4 V10 exposure estimate matches ground truth"] = bool(
+        v10 and want_exposure is not None and v10.exposure_amount == want_exposure
+        and any(e.source == "document" and e.filename == "claim_b_policy.pdf" for e in v10.evidence))
+    if v10 is not None and not finding_checks["B-F4 V10 exposure estimate matches ground truth"]:
+        print(f"  (V10 detail: exposure {v10.exposure_amount} vs expected {want_exposure}; inputs {v10.explanation.inputs}; "
+              f"evidence {[(e.source, e.filename) for e in v10.evidence]})")
     not_built = [f"{f['id']} {f['rule_id']}" for f in exp_f.values() if f["rule_id"] not in implemented]
     expected_keys = set(exp_f)
     extra = sorted(k for k in got_f if k not in expected_keys and not k.startswith("V14"))

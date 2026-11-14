@@ -9,18 +9,21 @@ import type { EvidenceRef } from "@/types/results";
 /** Opens the original document at the cited page (browser PDF viewer supports #page=N). */
 export function EvidenceLink({ claimId, evidence }: { claimId: string; evidence: EvidenceRef }) {
   const { t } = useI18n();
-  if (evidence.source === "claim_form" || !evidence.document_id) {
+  if (evidence.source !== "document" || !evidence.document_id) {
     const claimFormFields: Record<string, string> = {
       claimed_amount: t("claimed amount"),
       patient_name: t("patient name"),
     };
     const fieldLabel = evidence.field ? (claimFormFields[evidence.field] ?? evidence.field.replace(/_/g, " ")) : "";
+    const value = evidence.value;
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <FileText className="size-3" aria-hidden />
-        {t("Claim form")}
+        {evidence.source === "checklist" ? t("Document checklist") : t("Claim form")}
         {fieldLabel ? ` · ${fieldLabel}` : ""}
-        {evidence.value != null ? `: ${evidence.value}` : ""}
+        {value != null
+          ? `: ${Array.isArray(value) ? value.join(", ") : typeof value === "number" ? value.toLocaleString("en-IN") : value}`
+          : ""}
       </span>
     );
   }

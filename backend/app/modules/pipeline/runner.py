@@ -12,12 +12,12 @@ from __future__ import annotations
 import hashlib
 import logging
 import threading
-import traceback
 from concurrent.futures import ThreadPoolExecutor
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
 
+from app.core.safe_log import safe_trace
 from app.core import llm
 from app.modules.actions.plan import build_plan, readiness, summary_is_empty
 from app.modules.extraction import normalize as nz
@@ -268,7 +268,7 @@ def node_verify(state: ClaimState) -> dict:
             for f in raw:
                 findings.append(f if isinstance(f, Finding) else Finding.model_validate(f))  # I1 enforced
         except Exception as e:
-            log.warning("verification failed: %s\n%s", type(e).__name__, traceback.format_exc())
+            log.warning("verification failed: %s", safe_trace(e))
             warnings.append("Consistency checks could not run completely.")
     res = _results[state["claim_id"]]
     res.checklist = checklist
@@ -370,7 +370,7 @@ def run(claim_id: str) -> None:
             return
         GRAPH.invoke({"claim_id": claim_id, "claim": claim, "calls": [], "warnings": []})
     except Exception as e:
-        log.error("pipeline failed: %s\n%s", type(e).__name__, traceback.format_exc())
+        log.error("pipeline failed: %s", safe_trace(e))
         res = _results.get(claim_id)
         if res:
             res.status, res.error = RunStatus.FAILED, f"Analysis failed ({type(e).__name__}). Please try again."

@@ -1028,6 +1028,7 @@
   "policy_summary": {
     "sum_insured": {
       "value": 500000,
+      "text": "Rs. 5,00,000",
       "evidence": {
         "source": "document",
         "document_id": "doc-policy",
@@ -1039,6 +1040,7 @@
     },
     "room_rent_cap": {
       "value": 5000,
+      "text": "1% of Sum Insured per day (Rs. 5,000 per day)",
       "evidence": {
         "source": "document",
         "document_id": "doc-policy",
@@ -1048,8 +1050,10 @@
         "quote": "Room rent is payable up to 1% of the Sum Insured per day"
       }
     },
+    "room_rent_cap_percent": 1.0,
     "copay": {
       "value": 0,
+      "text": "Nil",
       "evidence": {
         "source": "document",
         "document_id": "doc-policy",
@@ -1059,28 +1063,94 @@
         "quote": "No co-payment applies under this policy"
       }
     },
+    "pre_hosp_days": {
+      "value": 30,
+      "text": "30 days before admission",
+      "evidence": {
+        "source": "document",
+        "document_id": "doc-policy",
+        "filename": "claim_b_policy.pdf",
+        "page_number": 3,
+        "bbox": null,
+        "quote": "up to 30 days before admission"
+      }
+    },
+    "post_hosp_days": {
+      "value": 60,
+      "text": "60 days after discharge",
+      "evidence": {
+        "source": "document",
+        "document_id": "doc-policy",
+        "filename": "claim_b_policy.pdf",
+        "page_number": 3,
+        "bbox": null,
+        "quote": "up to 60 days after discharge"
+      }
+    },
     "waiting_periods": [
       {
-        "label": "Initial",
+        "name": "Initial waiting period",
         "days": 30,
-        "clause_id": "c-5.1"
+        "evidence": {
+          "source": "document",
+          "document_id": "doc-policy",
+          "filename": "claim_b_policy.pdf",
+          "page_number": 5,
+          "bbox": null,
+          "quote": "Claims arising within 30 days from the first policy inception date are not payable"
+        }
       },
       {
-        "label": "Pre-existing",
-        "months": 36
+        "name": "Pre-existing diseases",
+        "days": 1094,
+        "evidence": {
+          "source": "document",
+          "document_id": "doc-policy",
+          "filename": "claim_b_policy.pdf",
+          "page_number": 5,
+          "bbox": null,
+          "quote": "Pre-existing diseases are covered only after 36 months of continuous coverage"
+        }
       },
       {
-        "label": "Specified conditions",
-        "months": 24
+        "name": "Specified conditions",
+        "days": 730,
+        "evidence": {
+          "source": "document",
+          "document_id": "doc-policy",
+          "filename": "claim_b_policy.pdf",
+          "page_number": 5,
+          "bbox": null,
+          "quote": "Cataract, hernia, hysterectomy and joint replacement are covered only after 24 months of continuous coverage"
+        }
       }
     ],
     "exclusions": [
-      "Cosmetic treatment",
-      "Dental treatment unless accident",
-      "Non-medical expenses"
-    ],
-    "pre_hosp_days": 30,
-    "post_hosp_days": 60
+      {
+        "value": null,
+        "text": "Cosmetic treatment",
+        "evidence": {
+          "source": "document",
+          "document_id": "doc-policy",
+          "filename": "claim_b_policy.pdf",
+          "page_number": 6,
+          "bbox": null,
+          "quote": "Cosmetic or plastic surgery unless required after an accident or cancer"
+        }
+      },
+      {
+        "value": null,
+        "text": "Dental treatment unless accident",
+        "evidence": {
+          "source": "document",
+          "document_id": "doc-policy",
+          "filename": "claim_b_policy.pdf",
+          "page_number": 6,
+          "bbox": null,
+          "quote": "Dental treatment unless arising from an accident"
+        }
+      }
+    ]
   },
   "action_plan": [
     {

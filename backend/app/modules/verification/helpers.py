@@ -58,7 +58,7 @@ def name_tokens(name: Any) -> list[str]:
     return [t for t in text.split() if t and t not in _TITLES]
 
 
-def compare_names(a: Any, b: Any) -> str:
+def compare_names(a: Any, b: Any, variant_ratio: float = 0.9) -> str:
     """Return 'same', 'variant' (likely spelling/initial/middle-name variation) or 'different'."""
     ta, tb = name_tokens(a), name_tokens(b)
     if not ta or not tb:
@@ -73,6 +73,6 @@ def compare_names(a: Any, b: Any) -> str:
     # dropped middle name, e.g. "ravi sharma" vs "ravi kumar sharma"
     if len(ta) != len(tb) and len(ta) >= 2 and len(tb) >= 2 and ta[0] == tb[0] and ta[-1] == tb[-1]:
         return "variant"
-    if SequenceMatcher(None, " ".join(ta), " ".join(tb)).ratio() >= 0.9:
+    if SequenceMatcher(None, " ".join(ta), " ".join(tb)).ratio() >= variant_ratio:
         return "variant"
     return "different"

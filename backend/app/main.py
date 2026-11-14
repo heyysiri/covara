@@ -4,7 +4,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.routes import claims, health
 from app.config import get_settings
 from app.modules.language.router import router as language_router
+from app.modules.evidence.router import router as evidence_router
 from app.modules.intake.router import router as intake_router
+from app.modules.packet.router import router as packet_router
 from app.modules.pipeline.router import router as pipeline_router
 
 settings = get_settings()
@@ -28,3 +30,5 @@ app.include_router(claims.router)
 app.include_router(intake_router)
 app.include_router(pipeline_router)
 app.include_router(language_router)
+app.include_router(evidence_router)
+app.include_router(packet_router)

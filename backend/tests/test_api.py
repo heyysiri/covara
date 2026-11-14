@@ -123,8 +123,8 @@ def test_invalid_category(client):
     assert r.status_code == 422
 
 
-def test_analyze_needs_documents_and_report_is_501(client):
+def test_analyze_needs_documents_and_report_needs_an_analysis(client):
     cid = _claim(client)
     assert client.post(f"/claims/{cid}/analyze").status_code == 422
     assert client.get(f"/claims/{cid}/results").json()["status"] == "idle"
-    assert client.get(f"/claims/{cid}/report").status_code == 501
+    assert client.get(f"/claims/{cid}/report").status_code == 409  # report needs a completed analysis

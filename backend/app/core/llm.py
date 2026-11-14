@@ -34,7 +34,7 @@ from app.services import providers
 log = logging.getLogger("covara.llm")
 T = TypeVar("T", bound=BaseModel)
 
-DEFAULT_CLAUDE_MODEL = "claude-sonnet-5-5"
+DEFAULT_CLAUDE_MODEL = "claude-haiku-5-5"  # low-cost default; set ANTHROPIC_MODEL to use a larger model
 DEFAULT_GEMINI_MODEL = "gemini-2.5-flash"
 # Server-side refusal fallback: if a safety classifier declines, the API re-runs on a fallback model.
 CLAUDE_BETAS = ["server-side-fallback-2026-07-01"]

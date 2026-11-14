@@ -22,6 +22,14 @@ REQUIRED_ALWAYS: list[DocType] = ["policy", "final_bill", "itemised_bill", "disc
 REQUIRED_IF_REFERENCED: list[DocType] = ["prescription", "diagnostic_report"]
 
 
+def required_categories(claim_type: str) -> list[str]:
+    """Document types always required for this claim type (decision D4). Single source of truth."""
+    required: list[str] = list(REQUIRED_ALWAYS)
+    if claim_type == "reimbursement":
+        required.append("payment_receipt")
+    return required
+
+
 def build_checklist(claim_type: str, documents: list[DocumentResult],
                     fields: list[ExtractedField] | None = None) -> list[ChecklistItem]:
     fields = fields or []
@@ -30,9 +38,7 @@ def build_checklist(claim_type: str, documents: list[DocumentResult],
         if d.status != "failed":
             by_type.setdefault(d.doc_type, []).append(d.id)
 
-    required = list(REQUIRED_ALWAYS)
-    if claim_type == "reimbursement":
-        required.append("payment_receipt")
+    required = required_categories(claim_type)
 
     items: list[ChecklistItem] = []
     for cat in required:
