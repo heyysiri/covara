@@ -41,7 +41,10 @@ def get_gemini_client():
     key = get_settings().gemini_api_key
     if not key:
         raise RuntimeError("GEMINI_API_KEY is not configured")
-    return genai.Client(api_key=key)
+    from google.genai import types
+
+    # The SDK defaults to API v1, which rejects JSON mode (structured output); v1beta supports it.
+    return genai.Client(api_key=key, http_options=types.HttpOptions(api_version="v1beta"))
 
 
 def get_groq_client():

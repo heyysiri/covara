@@ -47,3 +47,10 @@ def test_default_keeps_the_callers_own_order(monkeypatch, tmp_path):
 def test_configured_order_overrides_the_callers(monkeypatch, tmp_path):
     _, provider, _ = run(monkeypatch, tmp_path, "gemini,claude", {"claude", "gemini"})
     assert provider == "gemini"
+
+
+def test_gemini_client_uses_the_api_version_that_supports_json_mode(monkeypatch):
+    from app.services import providers
+
+    monkeypatch.setattr(get_settings(), "gemini_api_key", "dummy")
+    assert providers.get_gemini_client()._api_client._http_options.api_version == "v1beta"

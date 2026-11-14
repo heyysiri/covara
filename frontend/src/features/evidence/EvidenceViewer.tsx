@@ -127,7 +127,7 @@ function PolicyEvidence({ claimId, links, clauses }: { claimId: string; links: C
         <div key={c.id} className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium">
-              {t("Clause {ref}", { ref: c.clause_ref })} · {c.title}
+              {t("Clause {ref}", { ref: c.clause_ref })}
             </span>
             <Badge variant={l.verdict === "applies" ? "default" : "secondary"}>{VERDICT[l.verdict]}</Badge>
             <span className="text-xs text-muted-foreground">
