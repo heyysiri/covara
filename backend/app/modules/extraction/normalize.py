@@ -9,7 +9,7 @@ from datetime import date
 MONTHS = {m: i + 1 for i, m in enumerate(
     ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"])}
 
-DATE_KEYS = {"policy_start", "policy_end", "admission_date", "discharge_date", "diagnosis_date",
+DATE_KEYS = {"policy_start", "policy_end", "policy_inception", "admission_date", "discharge_date", "diagnosis_date",
              "bill_date", "receipt_date"}
 AMOUNT_KEYS = {"sum_insured", "room_rent_charged_per_day", "bill_total", "receipt_amount"}
 NAME_KEYS = {"patient_name", "policyholder_name"}

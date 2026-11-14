@@ -90,6 +90,14 @@
       "quote": "01-Apr-2026 to 31-Mar-2027"
     },
     {
+      "key": "policy_inception",
+      "value": "2024-04-01",
+      "raw_text": "01-Apr-2024",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 1,
+      "quote": "01-Apr-2024"
+    },
+    {
       "key": "policy_end",
       "value": "2027-03-31",
       "raw_text": "31-Mar-2027",

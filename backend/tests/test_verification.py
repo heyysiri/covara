@@ -613,3 +613,14 @@ def test_v10_still_fires_for_a_genuine_excess():
     fields = line_items([("Room rent - private room", 15000), ("Nursing charges", 3000)]) + [ef("room_rent_charged_per_day", 5000, "ib")]
     (f,) = find(run(fields, ALL_DOCS, policy(cap=4000.0)), "V10")
     assert f.explanation.inputs["days"] == 3 and f.exposure_amount is not None
+
+
+# ---------------------------------------------------------------- traceability: evidence names the field it came from
+def test_every_piece_of_document_evidence_names_the_extracted_field():
+    r = run([ef("bill_total", 85000, "fb"), ef("patient_name", "Ravi K Sharma", "rc"), ef("patient_name", "Ravi Kumar Sharma", "fb")],
+            ALL_DOCS, claimed_amount=95000)
+    doc_evidence = [e for f in r.findings for e in f.evidence if e.source == "document"]
+    assert doc_evidence and all(e.field for e in doc_evidence)
+    amount = next(f for f in r.findings if f.issue_type == "amount_mismatch")
+    assert {e.field for e in amount.evidence if e.source == "document"} == {"bill_total"}
+    assert {e.field for e in amount.evidence if e.source == "claim_form"} == {"claimed_amount"}

@@ -400,6 +400,7 @@ def expected() -> dict:
         field("insurer", INSURER, INSURER, F_POLICY, 1, INSURER),
         field("policyholder_name", PATIENT, f"Mr. {PATIENT}", F_POLICY, 1, f"Mr. {PATIENT}"),
         field("policy_start", "2026-04-01", PERIOD_START, F_POLICY, 1, f"{PERIOD_START} to {PERIOD_END}"),
+        field("policy_inception", "2024-04-01", INCEPTION, F_POLICY, 1, INCEPTION),
         field("policy_end", "2027-03-31", PERIOD_END, F_POLICY, 1, f"{PERIOD_START} to {PERIOD_END}"),
         field("sum_insured", SUM_INSURED, f"Rs. {inr(SUM_INSURED)}", F_POLICY, 1, f"Rs. {inr(SUM_INSURED)}"),
         field("room_rent_cap", ROOM_CAP_PER_DAY, f"Rs. {inr(ROOM_CAP_PER_DAY)} per day", F_POLICY, 1, f"(Rs. {inr(ROOM_CAP_PER_DAY)} per day)"),

@@ -84,6 +84,14 @@
       "quote": "15-Jun-2026 to 14-Jun-2027"
     },
     {
+      "key": "policy_inception",
+      "value": "2023-06-15",
+      "raw_text": "15-Jun-2023",
+      "file": "policy/claim_a_policy.pdf",
+      "page": 1,
+      "quote": "15-Jun-2023"
+    },
+    {
       "key": "policy_end",
       "value": "2027-06-14",
       "raw_text": "14-Jun-2027",

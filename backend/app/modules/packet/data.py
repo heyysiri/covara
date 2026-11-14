@@ -69,7 +69,7 @@ def value_of(results: AnalysisResults, key: str) -> object | None:
 def display(key: str, value: object) -> str:
     if value in (None, ""):
         return "Not found"
-    if key.endswith("_date") or key in ("policy_start", "policy_end"):
+    if key.endswith("_date") or key in ("policy_start", "policy_end", "policy_inception"):
         return pretty_date(value)
     if key in ("bill_total", "sum_insured", "receipt_amount", "room_rent_cap", "room_rent_charged_per_day"):
         return money(value)  # type: ignore[arg-type]
@@ -88,6 +88,7 @@ def summary_rows(claim: ClaimOut, results: AnalysisResults) -> list[tuple[str, s
         ("Amount claimed", money(claim.claimed_amount) if claim.claimed_amount is not None else "Not entered", None),
         row("Patient", "patient_name"), row("Insurer", "insurer"), row("Policy number", "policy_number"),
         row("Member ID", "member_id"),
+        row("First enrolled", "policy_inception"),
         ("Policy period", " to ".join(display("x_date", f.value) for f in period if f) or "Not found", period[0]),
         row("Hospital", "hospital_name"), row("Admission", "admission_date"), row("Discharge", "discharge_date"),
         row("Diagnosis (as written in the records)", "diagnosis"),

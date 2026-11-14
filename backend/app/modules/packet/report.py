@@ -18,7 +18,7 @@ OWNER = {"user": "You", "hospital": "Hospital", "doctor": "Doctor", "insurer": "
 
 def evidence_text(e: EvidenceRef) -> str:
     if e.source == "document":
-        where = f"{e.filename}, page {e.page_number}"
+        where = f"{e.filename}, page {e.page_number}" + (f", field {e.field.replace('_', ' ')}" if e.field else "")
         return f"{where}: \"{e.quote}\"" if e.quote else where
     if e.source == "claim_form":
         value = data.money(e.value) if (e.field or "").endswith("amount") else e.value

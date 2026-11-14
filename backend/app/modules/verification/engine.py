@@ -39,6 +39,8 @@ def run_verification(
 ) -> VerificationResult:
     """Optional inputs: `policy` (without it V10/V11 are skipped), `required_documents` (the checklist's list; defaults
     to the checklist rules for the claim type) and `config` (thresholds)."""
+    # Traceability: each piece of evidence carries the name of the extracted field it was read as (e.g. "bill_total").
+    fields = [f.model_copy(update={"evidence": f.evidence.model_copy(update={"field": f.evidence.field or f.key})}) for f in fields]
     ctx = Ctx(fields=fields, documents=documents, claim=claim or ClaimInput(), policy=policy,
               required_documents=required_documents, cfg=config)
     for rule in RULES:

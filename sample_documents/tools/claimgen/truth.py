@@ -87,6 +87,7 @@ def expected_fields(s: Scenario, p: Paths) -> list[dict]:
         _field("insurer", s.insurer, s.insurer, p.policy, 1, s.insurer),
         _field("policyholder_name", s.patient, f"{s.salutation} {s.patient}", p.policy, 1, f"{s.salutation} {s.patient}"),
         _field("policy_start", s.period_start.isoformat(), fmt_date(s.period_start), p.policy, 1, f"{fmt_date(s.period_start)} to {fmt_date(s.period_end)}"),
+        _field("policy_inception", s.inception.isoformat(), fmt_date(s.inception), p.policy, 1, fmt_date(s.inception)),
         _field("policy_end", s.period_end.isoformat(), fmt_date(s.period_end), p.policy, 1, f"{fmt_date(s.period_start)} to {fmt_date(s.period_end)}"),
         _field("sum_insured", s.sum_insured, f"Rs. {inr(s.sum_insured)}", p.policy, 1, f"Rs. {inr(s.sum_insured)}"),
         _field("room_rent_cap", s.room_cap, f"Rs. {inr(s.room_cap)} per day", p.policy, 1, f"(Rs. {inr(s.room_cap)} per day)"),

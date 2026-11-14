@@ -133,6 +133,22 @@
     },
     {
       "id": "fld-006",
+      "key": "policy_inception",
+      "value": "2024-04-01",
+      "raw_text": "01-Apr-2024",
+      "confidence": 0.95,
+      "user_confirmed": false,
+      "evidence": {
+        "source": "document",
+        "document_id": "doc-policy",
+        "filename": "claim_b_policy.pdf",
+        "page_number": 1,
+        "bbox": null,
+        "quote": "01-Apr-2024"
+      }
+    },
+    {
+      "id": "fld-007",
       "key": "policy_end",
       "value": "2027-03-31",
       "raw_text": "31-Mar-2027",
@@ -148,7 +164,7 @@
       }
     },
     {
-      "id": "fld-007",
+      "id": "fld-008",
       "key": "sum_insured",
       "value": 500000,
       "raw_text": "Rs. 5,00,000",
@@ -164,7 +180,7 @@
       }
     },
     {
-      "id": "fld-008",
+      "id": "fld-009",
       "key": "room_rent_cap",
       "value": 5000,
       "raw_text": "Rs. 5,000 per day",
@@ -180,7 +196,7 @@
       }
     },
     {
-      "id": "fld-009",
+      "id": "fld-010",
       "key": "waiting_period",
       "value": "initial 30 days; pre-existing 36 months; specified conditions 24 months",
       "raw_text": "Section 5",
@@ -196,7 +212,7 @@
       }
     },
     {
-      "id": "fld-010",
+      "id": "fld-011",
       "key": "patient_name",
       "value": "Ravi Kumar Sharma",
       "raw_text": "Ravi Kumar Sharma",
@@ -209,29 +225,13 @@
         "page_number": 1,
         "bbox": null,
         "quote": "Ravi Kumar Sharma"
-      }
-    },
-    {
-      "id": "fld-011",
-      "key": "hospital_name",
-      "value": "Demo City Care Hospital",
-      "raw_text": "Demo City Care Hospital",
-      "confidence": 0.95,
-      "user_confirmed": false,
-      "evidence": {
-        "source": "document",
-        "document_id": "doc-final-bill",
-        "filename": "claim_b_final_bill.pdf",
-        "page_number": 1,
-        "bbox": null,
-        "quote": "Demo City Care Hospital"
       }
     },
     {
       "id": "fld-012",
-      "key": "bill_number",
-      "value": "INV-2026-08-10457",
-      "raw_text": "INV-2026-08-10457",
+      "key": "hospital_name",
+      "value": "Demo City Care Hospital",
+      "raw_text": "Demo City Care Hospital",
       "confidence": 0.95,
       "user_confirmed": false,
       "evidence": {
@@ -240,11 +240,27 @@
         "filename": "claim_b_final_bill.pdf",
         "page_number": 1,
         "bbox": null,
-        "quote": "INV-2026-08-10457"
+        "quote": "Demo City Care Hospital"
       }
     },
     {
       "id": "fld-013",
+      "key": "bill_number",
+      "value": "INV-2026-08-10457",
+      "raw_text": "INV-2026-08-10457",
+      "confidence": 0.95,
+      "user_confirmed": false,
+      "evidence": {
+        "source": "document",
+        "document_id": "doc-final-bill",
+        "filename": "claim_b_final_bill.pdf",
+        "page_number": 1,
+        "bbox": null,
+        "quote": "INV-2026-08-10457"
+      }
+    },
+    {
+      "id": "fld-014",
       "key": "bill_date",
       "value": "2026-08-15",
       "raw_text": "15-Aug-2026",
@@ -260,7 +276,7 @@
       }
     },
     {
-      "id": "fld-014",
+      "id": "fld-015",
       "key": "bill_total",
       "value": 85000,
       "raw_text": "Rs. 85,000.00",
@@ -276,7 +292,7 @@
       }
     },
     {
-      "id": "fld-015",
+      "id": "fld-016",
       "key": "policy_number",
       "value": "SSH-2026-004567",
       "raw_text": "SSH-2026-004567",
@@ -289,26 +305,26 @@
         "page_number": 1,
         "bbox": null,
         "quote": "SSH-2026-004567"
-      }
-    },
-    {
-      "id": "fld-016",
-      "key": "member_id",
-      "value": "M-889201",
-      "raw_text": "M-889201",
-      "confidence": 0.95,
-      "user_confirmed": false,
-      "evidence": {
-        "source": "document",
-        "document_id": "doc-final-bill",
-        "filename": "claim_b_final_bill.pdf",
-        "page_number": 1,
-        "bbox": null,
-        "quote": "M-889201"
       }
     },
     {
       "id": "fld-017",
+      "key": "member_id",
+      "value": "M-889201",
+      "raw_text": "M-889201",
+      "confidence": 0.95,
+      "user_confirmed": false,
+      "evidence": {
+        "source": "document",
+        "document_id": "doc-final-bill",
+        "filename": "claim_b_final_bill.pdf",
+        "page_number": 1,
+        "bbox": null,
+        "quote": "M-889201"
+      }
+    },
+    {
+      "id": "fld-018",
       "key": "policy_number",
       "value": "SSH-2026-004567",
       "raw_text": "SSH-2026-004567",
@@ -324,7 +340,7 @@
       }
     },
     {
-      "id": "fld-018",
+      "id": "fld-019",
       "key": "member_id",
       "value": "M-889201",
       "raw_text": "M-889201",
@@ -340,7 +356,7 @@
       }
     },
     {
-      "id": "fld-019",
+      "id": "fld-020",
       "key": "bill_number",
       "value": "INV-2026-08-10457",
       "raw_text": "INV-2026-08-10457",
@@ -356,7 +372,7 @@
       }
     },
     {
-      "id": "fld-020",
+      "id": "fld-021",
       "key": "bill_date",
       "value": "2026-08-15",
       "raw_text": "15-Aug-2026",
@@ -372,7 +388,7 @@
       }
     },
     {
-      "id": "fld-021",
+      "id": "fld-022",
       "key": "bill_total",
       "value": 85000,
       "raw_text": "Rs. 85,000.00",
@@ -388,7 +404,7 @@
       }
     },
     {
-      "id": "fld-022",
+      "id": "fld-023",
       "key": "patient_name",
       "value": "Ravi Kumar Sharma",
       "raw_text": "Ravi Kumar Sharma",
@@ -404,7 +420,7 @@
       }
     },
     {
-      "id": "fld-023",
+      "id": "fld-024",
       "key": "hospital_name",
       "value": "Demo City Care Hospital",
       "raw_text": "Demo City Care Hospital",
@@ -420,7 +436,7 @@
       }
     },
     {
-      "id": "fld-024",
+      "id": "fld-025",
       "key": "bill_number",
       "value": "INV-2026-08-10457",
       "raw_text": "INV-2026-08-10457",
@@ -436,7 +452,7 @@
       }
     },
     {
-      "id": "fld-025",
+      "id": "fld-026",
       "key": "admission_date",
       "value": "2026-08-12",
       "raw_text": "12-Aug-2026",
@@ -452,7 +468,7 @@
       }
     },
     {
-      "id": "fld-026",
+      "id": "fld-027",
       "key": "discharge_date",
       "value": "2026-08-15",
       "raw_text": "15-Aug-2026",
@@ -468,7 +484,7 @@
       }
     },
     {
-      "id": "fld-027",
+      "id": "fld-028",
       "key": "diagnosis",
       "value": "Acute appendicitis",
       "raw_text": "Acute appendicitis",
@@ -484,7 +500,7 @@
       }
     },
     {
-      "id": "fld-028",
+      "id": "fld-029",
       "key": "treatment",
       "value": "Laparoscopic appendectomy",
       "raw_text": "Laparoscopic appendectomy performed on 13-Aug-2026",
@@ -500,7 +516,7 @@
       }
     },
     {
-      "id": "fld-029",
+      "id": "fld-030",
       "key": "referenced_document",
       "value": "prescription RX-7781",
       "raw_text": "prescription no. RX-7781",
@@ -516,7 +532,7 @@
       }
     },
     {
-      "id": "fld-030",
+      "id": "fld-031",
       "key": "room_rent_charged_per_day",
       "value": 7500,
       "raw_text": "Room rent - private single room",
@@ -532,7 +548,7 @@
       }
     },
     {
-      "id": "fld-031",
+      "id": "fld-032",
       "key": "receipt_amount",
       "value": 85000,
       "raw_text": "Rs. 85,000.00",
@@ -548,7 +564,7 @@
       }
     },
     {
-      "id": "fld-032",
+      "id": "fld-033",
       "key": "receipt_date",
       "value": "2026-08-15",
       "raw_text": "15-Aug-2026",
@@ -564,7 +580,7 @@
       }
     },
     {
-      "id": "fld-033",
+      "id": "fld-034",
       "key": "patient_name",
       "value": "Ravi K Sharma",
       "raw_text": "Ravi K Sharma",
@@ -580,7 +596,7 @@
       }
     },
     {
-      "id": "fld-034",
+      "id": "fld-035",
       "key": "line_item",
       "value": {
         "description": "Room rent - private single room",
@@ -601,7 +617,7 @@
       }
     },
     {
-      "id": "fld-035",
+      "id": "fld-036",
       "key": "line_item",
       "value": {
         "description": "Nursing charges",
@@ -622,7 +638,7 @@
       }
     },
     {
-      "id": "fld-036",
+      "id": "fld-037",
       "key": "line_item",
       "value": {
         "description": "Surgeon fee",
@@ -643,7 +659,7 @@
       }
     },
     {
-      "id": "fld-037",
+      "id": "fld-038",
       "key": "line_item",
       "value": {
         "description": "Anaesthetist fee",
@@ -664,7 +680,7 @@
       }
     },
     {
-      "id": "fld-038",
+      "id": "fld-039",
       "key": "line_item",
       "value": {
         "description": "Operation theatre charges",
@@ -685,7 +701,7 @@
       }
     },
     {
-      "id": "fld-039",
+      "id": "fld-040",
       "key": "line_item",
       "value": {
         "description": "Laparoscopic surgical consumables",
@@ -706,7 +722,7 @@
       }
     },
     {
-      "id": "fld-040",
+      "id": "fld-041",
       "key": "line_item",
       "value": {
         "description": "Medicines and pharmacy",
@@ -727,7 +743,7 @@
       }
     },
     {
-      "id": "fld-041",
+      "id": "fld-042",
       "key": "line_item",
       "value": {
         "description": "Diagnostics (lab and ultrasound)",
@@ -748,7 +764,7 @@
       }
     },
     {
-      "id": "fld-042",
+      "id": "fld-043",
       "key": "line_item",
       "value": {
         "description": "Registration and miscellaneous",

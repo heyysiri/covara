@@ -107,9 +107,17 @@ function DocumentEvidence({ claimId, evidence }: { claimId: string; evidence: Ev
         <>
           <EvidencePage key={`${current.document_id}-${current.page_number}-${current.quote}`} claimId={claimId} evidence={current} />
           {current.quote && (
-            <p className="rounded-md bg-muted/50 p-2 text-xs">
-              <span className="text-muted-foreground">Text cited: </span>
-              {current.quote}
+            <p className="space-y-0.5 rounded-md bg-muted/50 p-2 text-xs">
+              {current.field && (
+                <span className="block">
+                  <span className="text-muted-foreground">Extracted field: </span>
+                  <strong>{current.field.replace(/_/g, " ")}</strong>
+                </span>
+              )}
+              <span className="block">
+                <span className="text-muted-foreground">Text cited: </span>
+                {current.quote}
+              </span>
             </p>
           )}
         </>

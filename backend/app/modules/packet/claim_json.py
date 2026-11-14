@@ -46,7 +46,7 @@ def build_claim_json(claim: ClaimOut, results: AnalysisResults) -> dict:
                   "consent_at": claim.consent_at.isoformat() if claim.consent_at else None},
         "patient": {"name": v("patient_name"), "age": v("age")},
         "coverage": {"insurer": v("insurer"), "policy_number": v("policy_number"), "member_id": v("member_id"),
-                     "period_start": v("policy_start"), "period_end": v("policy_end"),
+                     "first_enrolment": v("policy_inception"), "period_start": v("policy_start"), "period_end": v("policy_end"),
                      "sum_insured": ps.sum_insured.value if ps and ps.sum_insured else v("sum_insured"),
                      "room_rent_cap_per_day": ps.room_rent_cap.value if ps and ps.room_rent_cap else None},
         "provider": {"name": v("hospital_name")},

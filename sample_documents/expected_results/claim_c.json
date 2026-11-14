@@ -84,6 +84,14 @@
       "quote": "25-Jul-2026 to 24-Jul-2027"
     },
     {
+      "key": "policy_inception",
+      "value": "2026-07-25",
+      "raw_text": "25-Jul-2026",
+      "file": "policy/claim_c_policy.pdf",
+      "page": 1,
+      "quote": "25-Jul-2026"
+    },
+    {
       "key": "policy_end",
       "value": "2027-07-24",
       "raw_text": "24-Jul-2027",

@@ -80,14 +80,14 @@ class ExtractedField(BaseModel):
 
 FIELD_KEYS = {
     "patient_name", "age", "policyholder_name", "member_id", "insurer", "policy_number",
-    "policy_start", "policy_end", "sum_insured", "room_rent_cap", "room_rent_charged_per_day",
+    "policy_start", "policy_end", "policy_inception", "sum_insured", "room_rent_cap", "room_rent_charged_per_day",
     "waiting_period", "hospital_name", "admission_date", "discharge_date", "diagnosis",
     "diagnosis_date", "treatment", "bill_number", "bill_date", "bill_total", "line_item",
     "billed_item", "prescribed_item", "receipt_amount", "receipt_date", "referenced_document",
 }
 CRITICAL_KEYS = {
     "patient_name", "policyholder_name", "policy_number", "member_id", "admission_date",
-    "discharge_date", "bill_total", "bill_number", "policy_start", "policy_end", "receipt_amount",
+    "discharge_date", "bill_total", "bill_number", "policy_start", "policy_end", "policy_inception", "receipt_amount",
 }
 REVIEW_THRESHOLD = 0.75
 

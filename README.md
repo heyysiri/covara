@@ -6,29 +6,61 @@ AI-powered insurance claim readiness and intelligence. Hackathon scope: **health
 
 > Covara is an AI-assisted preparation tool. It does not decide whether an insurer will approve a claim. Use synthetic documents only.
 
+## What it does
+
+A user uploads a health policy and hospital documents (typed PDFs, scans, phone photos, a handwritten prescription, or a whole folder / zip). Covara reads them, cross-checks them against each other and against the policy, and returns:
+
+1. **Evidence-linked findings.** Every finding shows the source document and page, the extracted field, the exact quote, the policy clause (quoted verbatim from the uploaded policy) and the reason it was flagged. Click *Why was this flagged?*.
+2. **An action plan** that says what to obtain, verify or clarify before submitting, who owns each step, with a ready-to-send message. Explanations can be shown in English or Hindi (Sarvam), read aloud, and dictated.
+3. **A claim packet**: one PDF (cover, summary, index, evidence references, your originals with bookmarks), a readiness report PDF, and `claim.json`. The packet is stamped INCOMPLETE on every page while blocking items are open.
+
+Deterministic Python code decides whether something is an issue; the AI only reads documents and phrases explanations. Covara never predicts approval or rejection, and every screen and PDF carries a disclaimer. Use **synthetic documents only**.
+
 ## Status
 
-**Phase 1 (skeleton) is done.** **Person 1 modules are done** (branch `person1-pipeline`): intake (M1), extraction (M2), policy intelligence (M4), action plan (M6) and the LangGraph pipeline (M8).
-Person 2 modules: verification rules (M3, `app/modules/verification`, wired in through `pipeline/verify_adapter.py`), evidence viewer (M5, `app/modules/evidence`), report and claim packet (M7, `app/modules/packet`). Still to do: demo claims A and C, Sarvam document, browser walkthrough.
+All of the above works end to end on the synthetic demo claims (see `sample_documents/README.md`). Not built: login, a database (claims are kept on local disk and expire), deployment, insurer/TPA integrations, structured FHIR input, and the Paytm integration.
+Verification rules in place: duplicate bill (V1), patient identity (V2), policy number / member ID (V3), amounts (V4), dates (V5), required and referenced documents (V7), room-rent limit with an estimated exposure (V10), waiting period (V11), low-confidence fields (V14).
 
-**AI provider: Claude, with or without an API key.** If `ANTHROPIC_API_KEY` is set, the backend calls the Claude API directly. If not, it uses your **logged-in Claude Code session** through its headless mode (`claude -p`, auto-detected on PATH or in the VS Code extension; override with `CLAUDE_CLI_PATH`, disable with `CLAUDE_USE_CLI=false`). Either way Claude reads the PDF/image itself and returns schema-validated JSON; rules top up anything it misses, and every value carries document, page and a quote located in the page text. Gemini and Groq remain optional fallbacks. With no provider at all, rule-based extraction over the PDF text layer still runs (weaker, see below). Calls through the Claude Code session are for local dev and demos, not production.
+**Measured** (full pipeline against the synthetic ground truth, low-cost model): claim A (clean) 33/33 fields and **no false alarms**; claim B 41/41 fields and all 5 planted findings with the exact exposure estimate; claim C 36/36 and the waiting-period finding; claim D (phone-photo scans + handwritten prescription) 33/33 with Sarvam OCR. Model output varies a little between runs, so treat these as measurements of a few runs, not guarantees. Reproduce with the commands under **Evaluations** below.
 
-**Measured accuracy** on demo claim B (`cd backend && .venv/bin/python -m tests.eval_claim_b`): Claude extracts 40 of 40 expected fields, finds all 4 findings the verification engine can produce, and the demo fix sequence ends at "Prepared for submission"; the rules-only fallback gets 22 of 40 and is not demo quality.
+## AI providers and cost
+
+| Provider | Used for | Setting |
+|---|---|---|
+| Claude | Reading documents, classification, phrasing (low-cost model by default: Haiku) | `ANTHROPIC_API_KEY` + `ANTHROPIC_MODEL`, **or** no key: uses your logged-in Claude Code session (`claude -p`) with `CLAUDE_CLI_MODEL` (default `haiku`) |
+| Sarvam | OCR of scans / photos / Indic text (Sarvam Vision), translation, speech to text, text to speech | `SARVAM_API_KEY` |
+| Gemini, Groq | Optional fallbacks | `GEMINI_API_KEY`, `GROQ_API_KEY` |
+
+Every model result is cached in `backend/.cache` by file hash, so re-running the same documents costs nothing. `DEMO_MODE=true` replays the cache only and never calls a provider. The Claude Code session path is for local development and demos, not production. With no provider at all, a weaker rule-based reader still runs.
+
+## Settings (`backend/.env`, see `.env.example`)
+
+| Setting | Default | Meaning |
+|---|---|---|
+| `FRONTEND_ORIGIN` | localhost:3000 | CORS origins (comma-separated) |
+| `MAX_UPLOAD_MB` | 20 | Per file |
+| `PERSIST_CLAIMS` | true | Save claims to `backend/.data/` (git-ignored) so they survive a restart |
+| `RETENTION_HOURS` | 72 | Claims older than this are deleted with their files and cached AI output (0 = keep) |
+| `DEMO_MODE` | false | Replay cached AI results only |
+| `ANTHROPIC_*`, `CLAUDE_*`, `SARVAM_API_KEY`, `GEMINI_*`, `GROQ_*` | | See the table above |
+
+## Privacy
+
+Consent is recorded before upload; **Delete my data** removes the files, extracted data, results, the saved snapshot and cached AI output; claims expire automatically; error logs record only the error type and location, never document content; uploaded originals are never modified and are stored under random names. This is designed around data-protection principles but has **not** been through a compliance review.
 
 ## Structure
 
 ```
-frontend/          Next.js 16 (App Router, TypeScript, Tailwind, shadcn/ui, Lucide)
-backend/           FastAPI (Python 3.12)
-  app/main.py        app + CORS
-  app/config.py      settings from backend/.env
-  app/api/routes/    health.py, claims.py
+frontend/          Next.js 16 (App Router, TypeScript, Tailwind, shadcn/ui), English + Hindi
+  src/features/      one folder per feature: intake, extraction, verification, policy, evidence, actions, packet, pipeline
+backend/           FastAPI (Python 3.12), LangGraph pipeline
+  app/modules/       intake, extraction, policy, verification, evidence, actions, packet, pipeline, language
+  app/core/          llm (providers, cache), sarvam, persistence, safe_log
   app/schemas/       claim.py, results.py (API contract)
-  app/services/      claim_store.py, providers.py (Gemini / Groq / Sarvam)
-  app/utils/         upload validation helpers
-  tests/             pytest
-sample_documents/  synthetic demo data (policy/, medical/, expected_results/)
-docs/
+  tests/             pytest + evals (eval_claim_b, eval_claims)
+sample_documents/  synthetic claims A-D, ground truth, and tools/claimgen (generates them from data)
+docs/              architecture, modules, phases (DIVISION_OF_WORK.md)
+PROGRESS.md        shared status board
 ```
 
 ## Prerequisites
@@ -45,7 +77,7 @@ docs/
 cd backend
 uv venv --python 3.12 .venv
 uv pip install --python .venv/bin/python -r requirements.txt
-cp .env.example .env        # then add API keys when you have them (all optional for now)
+cp .env.example .env        # add SARVAM_API_KEY (and ANTHROPIC_API_KEY if you have one); see Settings below
 ```
 
 ## 2. Frontend setup (once)
@@ -74,6 +106,17 @@ npm run dev
 
 Open http://localhost:3000. The header badge shows **API online** when the frontend can reach the backend. Interactive API docs: http://localhost:8000/docs.
 
+## Evaluations (full pipeline vs ground truth)
+
+```bash
+cd backend
+.venv/bin/python -m tests.eval_claims a       # a = clean claim, c = waiting period, d = photographed paper
+.venv/bin/python -m tests.eval_claim_b        # claim B, including the demo fix sequence
+# add --fresh to bypass the cache (a true re-measure), --rules for the offline no-AI fallback
+```
+
+Regenerate a synthetic claim: `cd sample_documents/tools && ../../backend/.venv/bin/python -m claimgen a`.
+
 ## 4. Verify
 
 ```bash
@@ -97,7 +140,7 @@ cd backend && .venv/bin/python -m pytest -q
 cd frontend && npm run lint && npm run build
 ```
 
-## API (Phase 1)
+## API
 
 | Method | Endpoint | Status |
 |---|---|---|

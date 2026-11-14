@@ -25,11 +25,11 @@ from app.modules.extraction import normalize as nz
 from app.modules.extraction.ingest import IngestedDoc, find_bbox, locate_quote
 from app.schemas.results import CRITICAL_KEYS, DocType, EvidenceRef, ExtractedField, LlmCall
 
-PROMPT_VERSION = "extract-v7"
+PROMPT_VERSION = "extract-v8"  # v8: policy_inception (first enrolment) is its own key
 
 KEYS_BY_TYPE: dict[str, list[str]] = {
     "policy": ["policyholder_name", "insurer", "policy_number", "member_id", "policy_start",
-               "policy_end", "sum_insured", "room_rent_cap", "waiting_period"],
+               "policy_end", "policy_inception", "sum_insured", "room_rent_cap", "waiting_period"],
     "final_bill": ["patient_name", "age", "hospital_name", "policy_number", "member_id", "bill_number",
                    "bill_date", "admission_date", "discharge_date", "bill_total",
                    "room_rent_charged_per_day", "line_item"],
@@ -52,7 +52,8 @@ LABELS: dict[str, str] = {
     "policy_number": r"policy\s*(?:no\.?|number|#)",
     "member_id": r"member\s*id|tpa\s*id|health\s*card\s*(?:no\.?|number)|card\s*no\.?",
     "insurer": r"insurer|insurance\s+company|insurance\s+provider",
-    "policy_start": r"policy\s*start\s*date|policy\s+period\s+from|period\s+from|valid\s+from|start\s+date|inception\s+date|risk\s+start\s+date",
+    "policy_start": r"policy\s*start\s*date|policy\s+period\s+from|current\s+policy\s+period|period\s+from|valid\s+from|start\s+date|risk\s+start\s+date",
+    "policy_inception": r"inception\s+date|first\s+enrol(?:l)?ment|date\s+of\s+first\s+enrol(?:l)?ment|insured\s+since|continuous\s+coverage\s+since|member\s+since",
     "policy_end": r"policy\s*end\s*date|period\s+to|valid\s+(?:to|till|until)|expiry\s+date|end\s+date|risk\s+end\s+date",
     "sum_insured": r"sum\s+insured",
     "hospital_name": r"hospital\s*name|name\s+of\s+(?:the\s+)?hospital",
@@ -197,6 +198,7 @@ def _prompt(doc_type: str, keys: list[str]) -> str:
         "- referenced_document: documents the text refers to (e.g. a prescription or lab report);"
         " value = the reference exactly as written, e.g. 'prescription no. RX-7781'.\n"
         "- waiting_period: value = duration as written (e.g. '24 months'), quote = the sentence.\n"
+        "- policy_start: the start of the CURRENT policy period (e.g. this year's renewal). policy_inception: the date the insured FIRST enrolled with the insurer ('inception', 'first enrolment', 'insured since'); they differ for renewed policies, so never use one for the other.\n"
         "- room_rent_cap: the room rent limit as written (e.g. '1% of Sum Insured per day').\n"
         "- diagnosis / treatment: the name only, without dates or surrounding clauses.\n"
         "- If a value is written in a non-Latin script (e.g. Hindi), give it in English/Latin letters (names: "
