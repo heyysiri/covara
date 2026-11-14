@@ -76,10 +76,18 @@ def groq_model() -> str:
     return get_settings().groq_model or DEFAULT_GROQ_MODEL
 
 
+def allowed_providers() -> list[str]:
+    """Providers this deployment may use, from LLM_PROVIDERS (e.g. "gemini" in production)."""
+    order = [p.strip().lower() for p in get_settings().llm_providers.split(",") if p.strip()]
+    return [p for p in order if p in ("claude", "gemini", "groq")] or ["claude", "gemini", "groq"]
+
+
 def available() -> dict[str, bool]:
     s = get_settings()
-    return {"claude": claude_backend() is not None, "gemini": bool(s.gemini_api_key),
-            "groq": bool(s.groq_api_key)}
+    allowed = set(allowed_providers())
+    return {"claude": "claude" in allowed and claude_backend() is not None,
+            "gemini": "gemini" in allowed and bool(s.gemini_api_key),
+            "groq": "groq" in allowed and bool(s.groq_api_key)}
 
 
 def _model_for(provider: str) -> str:
@@ -253,7 +261,11 @@ def generate_json(
     """Return (validated object, provider) or (None, None) if no provider produced valid output."""
     settings = get_settings()
     avail = available()
-    for provider in prefer:
+    allowed = allowed_providers()
+    # LLM_PROVIDERS decides which providers exist and, when set, their order; otherwise each caller's own order applies.
+    configured = settings.llm_providers.replace(" ", "") != "claude,gemini,groq"
+    order = [p for p in allowed if p in prefer] if configured else [p for p in prefer if p in allowed]
+    for provider in order:
         if provider == "groq" and file_bytes is not None:
             continue  # Groq is text-only here; never send documents to it
         model = _model_for(provider)

@@ -33,6 +33,8 @@ class Settings(BaseSettings):
     claude_use_cli: bool = True
     claude_cli_path: str = ""
     claude_cli_model: str = "haiku"  # model for `claude -p`: low cost by default; set "" to use your session's own model
+    # Which providers may be used, in order of preference, e.g. "gemini" for a Gemini-only deployment.
+    llm_providers: str = "claude,gemini,groq"
     gemini_api_key: str = ""
     gemini_model: str = ""
     groq_api_key: str = ""
