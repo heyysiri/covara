@@ -194,8 +194,10 @@ def node_extract(state: ClaimState) -> dict:
             dr.status = "processed"
             dr.extraction_method = f"sarvam+{method}" if doc.ocr_source else method
             if method == "none":
-                warnings.append(f"{dr.filename}: no text layer and no vision model configured, so nothing "
-                                "could be extracted. Add ANTHROPIC_API_KEY to read scans and photos.")
+                warnings.append(f"{dr.filename}: this document could not be read automatically, so nothing was extracted from it.")
+            elif method == "rules":
+                warnings.append(f"{dr.filename}: the automatic reader was unavailable, so this document was read with basic "
+                                "rules only. Values may be missing or wrong: please check them before relying on the results.")
             fields.extend(fs)
     _progress(state, "extract")
     return {"fields": fields, "warnings": warnings}

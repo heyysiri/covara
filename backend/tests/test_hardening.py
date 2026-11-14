@@ -75,3 +75,14 @@ def test_a_failure_inside_the_pipeline_is_logged_without_content(offline, caplog
         offline.post(f"/claims/{cid}/analyze")
     assert offline.get(f"/claims/{cid}/results").json()["status"] == "complete"  # verification failing does not fail the run
     assert "ValueError" in caplog.text and secret not in caplog.text and "Anita" not in caplog.text
+
+
+@pytest.mark.skipif(not (SAMPLES / "expected_results" / "claim_a.json").exists(), reason="sample documents missing")
+def test_users_are_told_when_the_automatic_reader_was_unavailable(offline):
+    truth = json.loads((SAMPLES / "expected_results" / "claim_a.json").read_text())
+    cid = offline.post("/claims", json={**truth["claim_input"], "consent_given": True}).json()["id"]
+    p = SAMPLES / "medical" / "claim_a_final_bill.pdf"
+    upload(offline, cid, p.name, p.read_bytes(), "final_bill")
+    offline.post(f"/claims/{cid}/analyze")
+    warnings = offline.get(f"/claims/{cid}/results").json()["warnings"]
+    assert any("automatic reader was unavailable" in w and p.name in w for w in warnings)
