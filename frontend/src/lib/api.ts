@@ -6,6 +6,7 @@ import type {
 import type {
   ClaimCreate,
   ClaimOut,
+  DocumentOut,
   DocumentCategory,
   HealthResponse,
   UploadResponse,
@@ -63,6 +64,11 @@ export const updateClaim = (claimId: string, payload: { claimed_amount?: number 
 
 export const deleteClaim = (claimId: string) =>
   request<void>(`/claims/${claimId}`, { method: "DELETE" });
+
+export const listDocuments = (claimId: string) => request<DocumentOut[]>(`/claims/${claimId}/documents`);
+
+export const deleteDocument = (claimId: string, documentId: string) =>
+  request<void>(`/claims/${claimId}/documents/${documentId}`, { method: "DELETE" });
 
 export const getChecklist = (claimId: string) => request<ChecklistItem[]>(`/claims/${claimId}/checklist`);
 

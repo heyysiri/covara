@@ -270,3 +270,68 @@ def test_gemini_path_with_stub(client, docs, monkeypatch):
     # Second call is served from cache.
     extract(doc, "final_bill", calls)
     assert len(calls_made) == 1 and calls[-1].cached
+
+
+def test_policy_summary_handles_label_value_on_separate_lines(tmp_path):
+    """Table-style schedules put the label and value on different lines (found on demo claim B)."""
+    import hashlib
+    import pymupdf
+    from app.modules.extraction.ingest import ingest
+    from app.modules.policy.index import build_clauses
+    from app.modules.policy.summary import rules_summary
+
+    pdf = tmp_path / "p.pdf"
+    d = pymupdf.open()
+    d.new_page().insert_text((50, 60), "POLICY SCHEDULE\nSum Insured\nRs. 5,00,000\nRoom Rent Limit\n"
+                                       "1% of Sum Insured per day (Rs. 5,000 per day)\n", fontsize=10)
+    d.save(pdf)
+    doc = ingest("d", "p.pdf", pdf, "application/pdf", hashlib.sha256(pdf.read_bytes()).hexdigest())
+    s = rules_summary(doc, build_clauses(doc))
+    assert s.sum_insured and s.sum_insured.value == 500000
+    assert s.room_rent_cap and s.room_rent_cap.value == 5000 and s.room_rent_cap_percent == 1
+
+
+def test_claim_form_evidence_and_validation():
+    ok = EvidenceRef(source="claim_form", field="claimed_amount", value=95000)
+    assert ok.page_number is None
+    with pytest.raises(ValueError):
+        EvidenceRef(source="claim_form")  # needs a field
+    with pytest.raises(ValueError):
+        EvidenceRef(source="document", document_id="d")  # needs filename + page
+    f = Finding(id="f", rule_id="V4", issue_type="amount_mismatch", severity="medium", kind="confirmed",
+                title="t", description="d", evidence=[ok], explanation=Explanation(rule="V4"))
+    assert f.evidence[0].source == "claim_form"
+
+
+def test_verification_result_object_checks_passed_and_claim_form_finding(client, docs, monkeypatch):
+    from app.modules.pipeline.context import VerificationResult
+
+    def verify(ctx):
+        bill = ctx.fields_for("bill_total")[0]
+        f = Finding(id="x1", rule_id="V4", issue_type="amount_mismatch", severity="medium", kind="confirmed",
+                    title="Bill total differs from the claimed amount", description="Totals differ.",
+                    evidence=[ctx.claim_form_ref("claimed_amount"), bill.evidence], blocking=True,
+                    extracted_value=str(bill.value), comparison_value=str(ctx.claim.claimed_amount),
+                    explanation=Explanation(rule="V4"))
+        return VerificationResult(findings=[f], checks_passed=["Admission date is not after discharge date"])
+
+    mod = types.ModuleType("app.modules.verification.service")
+    mod.run_verification = verify
+    monkeypatch.setitem(sys.modules, "app.modules.verification.service", mod)
+    res = _analyze(client, _claim_with_docs(client, docs))
+    assert res["checks_passed"] == ["Admission date is not after discharge date"]
+    act = next(a for a in res["action_plan"] if a["finding_ids"] == ["x1"])
+    assert "final_bill.pdf" in " ".join(act["how"])  # picked the document evidence, not the claim form
+    assert res["checklist_summary"]["referenced_but_missing"] == ["prescription"]
+    assert "policy" in res["checklist_summary"]["required_present"]
+
+
+def test_delete_single_document(client, docs):
+    cid = _claim_with_docs(client, docs)
+    first = client.get(f"/claims/{cid}/documents").json()[0]
+    path_dir = get_settings().upload_dir / cid
+    n_files = len(list(path_dir.iterdir()))
+    assert client.delete(f"/claims/{cid}/documents/{first['id']}").status_code == 204
+    assert len(client.get(f"/claims/{cid}/documents").json()) == 3
+    assert len(list(path_dir.iterdir())) == n_files - 1
+    assert client.delete(f"/claims/{cid}/documents/{first['id']}").status_code == 404

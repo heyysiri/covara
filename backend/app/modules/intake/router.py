@@ -54,6 +54,19 @@ def get_document_file(claim_id: str, document_id: str) -> FileResponse:
                         content_disposition_type="inline")
 
 
+@router.delete("/{claim_id}/documents/{document_id}", status_code=204)
+def delete_document(claim_id: str, document_id: str) -> Response:
+    """Remove one uploaded document (e.g. a duplicate bill). Press Re-check afterwards."""
+    claim = _claim(claim_id)
+    removed = claim_store.remove_document(claim, document_id)
+    if removed is None:
+        raise HTTPException(status_code=404, detail="Document not found")
+    still_used = {d.sha256 for c in claim_store.all_claims() for d in c.documents}
+    if removed.sha256 not in still_used:
+        llm.purge_cache_for([removed.sha256])
+    return Response(status_code=204)
+
+
 @router.delete("/{claim_id}", status_code=204)
 def delete_claim(claim_id: str) -> Response:
     """Delete my data: files, extracted fields, results, cached model outputs for these files."""

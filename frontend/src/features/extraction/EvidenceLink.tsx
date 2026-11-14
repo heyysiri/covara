@@ -5,6 +5,14 @@ import type { EvidenceRef } from "@/types/results";
 
 /** Opens the original document at the cited page (browser PDF viewer supports #page=N). */
 export function EvidenceLink({ claimId, evidence }: { claimId: string; evidence: EvidenceRef }) {
+  if (evidence.source === "claim_form" || !evidence.document_id)
+    return (
+      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+        <FileText className="size-3" aria-hidden />
+        Claim form{evidence.field ? ` · ${evidence.field.replace(/_/g, " ")}` : ""}
+        {evidence.value != null ? `: ${evidence.value}` : ""}
+      </span>
+    );
   return (
     <a
       href={`${documentFileUrl(claimId, evidence.document_id)}#page=${evidence.page_number}`}

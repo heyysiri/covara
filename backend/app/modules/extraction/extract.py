@@ -24,7 +24,7 @@ from app.modules.extraction import normalize as nz
 from app.modules.extraction.ingest import IngestedDoc, find_bbox, locate_quote
 from app.schemas.results import CRITICAL_KEYS, DocType, EvidenceRef, ExtractedField, LlmCall
 
-PROMPT_VERSION = "extract-v2"
+PROMPT_VERSION = "extract-v3"
 
 KEYS_BY_TYPE: dict[str, list[str]] = {
     "policy": ["policyholder_name", "insurer", "policy_number", "member_id", "policy_start",
@@ -198,6 +198,7 @@ def _prompt(doc_type: str, keys: list[str]) -> str:
         " final_bill, payment_receipt.\n"
         "- waiting_period: value = duration as written (e.g. '24 months'), quote = the sentence.\n"
         "- room_rent_cap: the room rent limit as written (e.g. '1% of Sum Insured per day').\n"
+        "- diagnosis / treatment: the name only, without dates or surrounding clauses.\n"
         "- confidence: your certainty that the value is correct and complete (0-1)."
     )
 

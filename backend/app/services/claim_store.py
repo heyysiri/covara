@@ -52,6 +52,16 @@ def find_by_sha(claim: ClaimOut, sha256: str) -> DocumentOut | None:
     return next((d for d in claim.documents if d.sha256 == sha256), None)
 
 
+def remove_document(claim: ClaimOut, document_id: str) -> DocumentOut | None:
+    """Remove one document (and its stored file) from the claim."""
+    doc = next((d for d in claim.documents if d.id == document_id), None)
+    if doc is None:
+        return None
+    document_path(claim.id, doc).unlink(missing_ok=True)
+    claim.documents = [d for d in claim.documents if d.id != document_id]
+    return doc
+
+
 def delete_claim(claim_id: str) -> bool:
     """Remove the claim and its stored files. Derived data is removed by the caller's hooks."""
     claim = _claims.pop(claim_id, None)

@@ -11,7 +11,9 @@ AI-powered insurance claim readiness and intelligence. Hackathon scope: **health
 **Phase 1 (skeleton) is done.** **Person 1 modules are done** (branch `person1-pipeline`): intake (M1), extraction (M2), policy intelligence (M4), action plan (M6) and the LangGraph pipeline (M8).
 Pending (Person 2): verification rules (M3, plugs in via `app/modules/verification/service.py::run_verification`, see `app/modules/pipeline/context.py`), evidence viewer (M5), report/packet (M7, `report` still returns `501`), workspace shell/demo data (M9).
 
-Works **without API keys** (rule-based extraction over the PDF text layer). With `GEMINI_API_KEY` set, Gemini reads PDFs/images directly and rules top up missing values; with `GROQ_API_KEY`, Groq classifies documents. Every value carries document, page and a verbatim quote.
+**AI provider: Claude, with or without an API key.** If `ANTHROPIC_API_KEY` is set, the backend calls the Claude API directly. If not, it uses your **logged-in Claude Code session** through its headless mode (`claude -p`, auto-detected on PATH or in the VS Code extension; override with `CLAUDE_CLI_PATH`, disable with `CLAUDE_USE_CLI=false`). Either way Claude reads the PDF/image itself and returns schema-validated JSON; rules top up anything it misses, and every value carries document, page and a quote located in the page text. Gemini and Groq remain optional fallbacks. With no provider at all, rule-based extraction over the PDF text layer still runs (weaker, see below). Calls through the Claude Code session are for local dev and demos, not production.
+
+**Measured accuracy** on demo claim B (`cd backend && .venv/bin/python -m tests.eval_claim_b`): Claude extracts 30 of 30 expected fields and passes all policy and checklist checks; the rules-only fallback gets 13 of 30. Findings are produced by the verification engine (Person 2), not by this module.
 
 ## Structure
 
@@ -108,6 +110,7 @@ cd frontend && npm run lint && npm run build
 | DELETE | `/claims/{id}` | Delete my data: files, results, cached model outputs. |
 | GET | `/claims/{id}/checklist` | Required vs received documents (D4), incl. referenced-but-missing. |
 | GET | `/claims/{id}/documents/{doc_id}/file` | Original file (for the evidence viewer; append `#page=N`). |
+| DELETE | `/claims/{id}/documents/{doc_id}` | Remove one document (e.g. a duplicate bill); press Re-check afterwards. |
 | POST | `/claims/{id}/analyze` | `202`; starts or re-checks the pipeline. Poll `/results`. |
 | GET | `/claims/{id}/results` | Full `AnalysisResults` (status, stage, progress, fields, clauses, policy summary, findings, action plan, checklist, readiness). |
 | GET | `/claims/{id}/extraction` | Documents + extracted fields + ids needing review. |
@@ -124,7 +127,7 @@ Upload rules: PDF / PNG / JPG only, max `MAX_UPLOAD_MB` (default 20) per file. T
 
 `frontend/.env.local` (see `frontend/.env.example`): `NEXT_PUBLIC_API_URL`. **Never put secrets in `NEXT_PUBLIC_` variables.**
 
-`GEMINI_MODEL` defaults to `gemini-2.5-flash` and `GROQ_MODEL` to `llama-3.1-8b-instant` if left empty (check current model IDs). `DEMO_MODE=true` replays cached model outputs only (no live calls). Model outputs are cached in `backend/.cache/` by file hash.
+`ANTHROPIC_MODEL` defaults to `claude-opus-5-5` (API key path only; the Claude Code path uses your session's model, or `CLAUDE_CLI_MODEL`). `GEMINI_MODEL` defaults to `gemini-2.5-flash` and `GROQ_MODEL` to `llama-3.1-8b-instant` if left empty (check current model IDs). `DEMO_MODE=true` replays cached model outputs only (no live calls). Model outputs are cached in `backend/.cache/` by file hash.
 
 AI providers are optional. The app boots without keys, and `backend/app/services/providers.py` lazily creates Gemini, Groq and Sarvam clients once a key is set.
 

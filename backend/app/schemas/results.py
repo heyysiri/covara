@@ -46,11 +46,25 @@ ClauseType = Literal["coverage", "exclusion", "sublimit", "waiting_period", "con
 
 
 class EvidenceRef(BaseModel):
-    document_id: str
-    filename: str
-    page_number: int  # 1-based
+    """Where a value comes from: a page of an uploaded document, or the claim form the user filled in."""
+
+    source: Literal["document", "claim_form"] = "document"
+    document_id: str | None = None
+    filename: str | None = None
+    page_number: int | None = None  # 1-based
     bbox: list[float] | None = None  # [x0, y0, x1, y1] normalised 0-1
     quote: str | None = None  # exact source text (verified against the page text when possible)
+    field: str | None = None  # claim_form only, e.g. "claimed_amount"
+    value: str | float | None = None  # claim_form only
+
+    @model_validator(mode="after")
+    def _document_needs_location(self):
+        if self.source == "document" and (self.document_id is None or self.filename is None
+                                          or self.page_number is None):
+            raise ValueError("document evidence needs document_id, filename and page_number")
+        if self.source == "claim_form" and not self.field:
+            raise ValueError("claim_form evidence needs a field")
+        return self
 
 
 class ExtractedField(BaseModel):
@@ -176,6 +190,14 @@ class Action(BaseModel):
         return self
 
 
+class ChecklistSummary(BaseModel):
+    """Compact view of the checklist (same shape as the demo fixture)."""
+
+    required_present: list[str] = Field(default_factory=list)
+    required_missing: list[str] = Field(default_factory=list)
+    referenced_but_missing: list[str] = Field(default_factory=list)
+
+
 class ChecklistItem(BaseModel):
     category: DocType
     label: str
@@ -224,6 +246,9 @@ class AnalysisResults(BaseModel):
     policy_summary: PolicySummary | None = None
     action_plan: list[Action] = Field(default_factory=list)
     checklist: list[ChecklistItem] = Field(default_factory=list)
+    checklist_summary: ChecklistSummary = Field(default_factory=ChecklistSummary)
+    checks_passed: list[str] = Field(default_factory=list)  # consistent items: no finding behind them
+    documents_failed: list[str] = Field(default_factory=list)
     providers_used: list[str] = Field(default_factory=list)
     llm_calls: list[LlmCall] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)

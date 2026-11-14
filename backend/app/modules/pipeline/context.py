@@ -14,7 +14,26 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from app.schemas.claim import ClaimOut
-from app.schemas.results import ChecklistItem, DocumentResult, ExtractedField, PolicyClause, PolicySummary
+from app.schemas.results import (
+    ChecklistItem,
+    DocumentResult,
+    EvidenceRef,
+    ExtractedField,
+    Finding,
+    PolicyClause,
+    PolicySummary,
+)
+
+
+@dataclass
+class VerificationResult:
+    """What run_verification may return: findings plus the checks that passed (shown as "consistent").
+
+    Returning a plain list[Finding] or a (findings, checks_passed) tuple is also accepted.
+    """
+
+    findings: list[Finding] = field(default_factory=list)
+    checks_passed: list[str] = field(default_factory=list)
 
 
 @dataclass
@@ -29,6 +48,10 @@ class VerificationContext:
 
     def fields_for(self, key: str) -> list[ExtractedField]:
         return [f for f in self.fields if f.key == key and f.value is not None]
+
+    def claim_form_ref(self, field_name: str) -> EvidenceRef:
+        """Evidence pointing at a claim-form value (e.g. "claimed_amount", "patient_name")."""
+        return EvidenceRef(source="claim_form", field=field_name, value=getattr(self.claim, field_name, None))
 
     def doc_type_of(self, document_id: str) -> str | None:
         return next((d.doc_type for d in self.documents if d.id == document_id), None)

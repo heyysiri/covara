@@ -101,7 +101,7 @@ export function PolicyPanel({ claimId, results }: { claimId: string; results: An
                 <span className="ml-auto">
                   <EvidenceLink
                     claimId={claimId}
-                    evidence={{ document_id: c.document_id, filename: c.filename, page_number: c.page_number, bbox: null, quote: null }}
+                    evidence={{ source: "document", document_id: c.document_id, filename: c.filename, page_number: c.page_number, bbox: null, quote: null }}
                   />
                 </span>
               </div>

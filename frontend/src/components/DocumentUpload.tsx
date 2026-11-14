@@ -10,8 +10,17 @@ import { DeleteClaimButton } from "@/features/intake/DeleteClaimButton";
 import { Checklist } from "@/features/intake/Checklist";
 import { AnalysisView } from "@/features/pipeline/AnalysisView";
 import { useAnalysis } from "@/features/pipeline/useAnalysis";
-import { ApiError, createClaim, getChecklist, updateClaim, uploadDocuments } from "@/lib/api";
+import {
+  ApiError,
+  createClaim,
+  deleteDocument,
+  getChecklist,
+  listDocuments,
+  updateClaim,
+  uploadDocuments,
+} from "@/lib/api";
 import type { ChecklistItem } from "@/types/results";
+import type { DocumentOut } from "@/types/claim";
 import {
   DOCUMENT_CATEGORIES,
   type ClaimType,
@@ -64,6 +73,7 @@ export function DocumentUpload() {
   const [patientName, setPatientName] = useState("");
   const [consent, setConsent] = useState(false);
   const [checklist, setChecklist] = useState<ChecklistItem[]>([]);
+  const [docs, setDocs] = useState<DocumentOut[]>([]);
   const analysis = useAnalysis(claimId);
 
   const amountValue = claimedAmount.trim() ? Number(claimedAmount.replace(/[,₹\s]/g, "")) : null;
@@ -71,11 +81,24 @@ export function DocumentUpload() {
   useEffect(() => {
     if (!claimId) return;
     getChecklist(claimId).then(setChecklist).catch(() => {});
+    listDocuments(claimId).then(setDocs).catch(() => {});
   }, [claimId, items, analysis.results?.status]);
+
+  async function removeDoc(id: string) {
+    if (!claimId) return;
+    try {
+      await deleteDocument(claimId, id);
+      setDocs((d) => d.filter((x) => x.id !== id));
+      getChecklist(claimId).then(setChecklist).catch(() => {});
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : "Could not remove the document.");
+    }
+  }
 
   function resetAll() {
     setClaimId(null);
     setItems([]);
+    setDocs([]);
     setChecklist([]);
     analysis.setResults(null);
   }
@@ -328,6 +351,37 @@ export function DocumentUpload() {
               </span>
             )}
           </div>
+          {docs.length > 0 && (
+            <div className="rounded-lg border">
+              <p className="border-b px-3 py-2 text-sm font-medium">Documents in this claim ({docs.length})</p>
+              <ul className="divide-y">
+                {docs.map((d) => (
+                  <li key={d.id} className="flex items-center gap-3 px-3 py-2 text-sm">
+                    <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+                    <span className="min-w-0 flex-1 truncate">{d.original_filename}</span>
+                    {d.duplicate_of && <span className="text-xs text-amber-600">Same file as an earlier upload</span>}
+                    <span className="text-xs text-muted-foreground">
+                      {DOCUMENT_CATEGORIES.find((c) => c.value === d.category)?.label}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Remove ${d.original_filename}`}
+                      disabled={analysis.running}
+                      onClick={() => removeDoc(d.id)}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+              {analysis.results?.documents.length ? (
+                <p className="border-t px-3 py-2 text-xs text-muted-foreground">
+                  Changed your documents? Press Re-check in the results below.
+                </p>
+              ) : null}
+            </div>
+          )}
           {claimId && !analysis.results?.documents.length && <Checklist items={checklist} />}
         </CardContent>
       </Card>

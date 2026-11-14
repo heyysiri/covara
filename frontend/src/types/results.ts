@@ -9,12 +9,16 @@ export type ClauseType = "coverage" | "exclusion" | "sublimit" | "waiting_period
 export type Owner = "user" | "hospital" | "doctor" | "insurer";
 export type ActionGroup = "upload" | "verify_or_correct" | "policy_review" | "consistent" | "ask_insurer";
 
+/** A page of an uploaded document, or a value from the claim form (source = "claim_form"). */
 export interface EvidenceRef {
-  document_id: string;
-  filename: string;
-  page_number: number;
+  source: "document" | "claim_form";
+  document_id: string | null;
+  filename: string | null;
+  page_number: number | null;
   bbox: [number, number, number, number] | null;
   quote: string | null;
+  field?: string | null; // claim_form only, e.g. "claimed_amount"
+  value?: string | number | null; // claim_form only
 }
 
 export interface ExtractedField {
@@ -112,6 +116,12 @@ export interface ChecklistItem {
   evidence: EvidenceRef | null;
 }
 
+export interface ChecklistSummary {
+  required_present: string[];
+  required_missing: string[];
+  referenced_but_missing: string[];
+}
+
 export interface DocumentResult {
   id: string;
   filename: string;
@@ -150,6 +160,9 @@ export interface AnalysisResults {
   policy_summary: PolicySummary | null;
   action_plan: Action[];
   checklist: ChecklistItem[];
+  checklist_summary: ChecklistSummary;
+  checks_passed: string[];
+  documents_failed: string[];
   providers_used: string[];
   llm_calls: LlmCall[];
   warnings: string[];

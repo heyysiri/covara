@@ -55,8 +55,26 @@ export function ActionPlan({
     onChange(actions.map((x) => (x.id === a.id ? updated : x)));
   }
 
+  const consistent = results.checks_passed.length > 0 && (
+    <div className="rounded-lg border p-3">
+      <p className="mb-1 flex items-center gap-1.5 text-sm font-medium">
+        <Check className="size-4 text-emerald-600" aria-hidden /> Appears consistent
+      </p>
+      <ul className="list-disc space-y-0.5 pl-5 text-sm text-muted-foreground">
+        {results.checks_passed.map((c) => (
+          <li key={c}>{c}</li>
+        ))}
+      </ul>
+    </div>
+  );
+
   if (actions.length === 0)
-    return <p className="text-sm text-muted-foreground">No actions needed. Your documents look complete and consistent.</p>;
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-muted-foreground">No actions needed. Your documents look complete and consistent.</p>
+        {consistent}
+      </div>
+    );
 
   return (
     <div className="space-y-3">
@@ -122,6 +140,7 @@ export function ActionPlan({
           );
         })}
       </ul>
+      {consistent}
     </div>
   );
 }

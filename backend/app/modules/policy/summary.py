@@ -15,7 +15,7 @@ from app.modules.extraction import normalize as nz
 from app.modules.extraction.ingest import IngestedDoc, find_bbox, locate_quote, norm_ws
 from app.schemas.results import EvidenceRef, LlmCall, PolicyClause, PolicySummary, SummaryValue, WaitingPeriod
 
-PROMPT_VERSION = "policy-summary-v1"
+PROMPT_VERSION = "policy-summary-v2"
 _AMT = r"(?:₹|rs\.?|inr)?\s*(\d[\d,]*(?:\.\d+)?)\s*(lakhs?|lacs?|crores?)?"
 
 
@@ -86,7 +86,7 @@ def rules_waiting_periods(doc: IngestedDoc) -> list[WaitingPeriod]:
 
 def rules_summary(doc: IngestedDoc, clauses: list[PolicyClause]) -> PolicySummary:
     s = PolicySummary()
-    hit = _search(doc, r"sum\s+insured[^\n\d₹]{0,40}" + _AMT)
+    hit = _search(doc, r"sum\s+insured\s*[:\-]?[^\d₹]{0,40}?" + _AMT)  # label and value may be on separate lines
     if hit:
         m, page, text = hit
         amt = nz.parse_amount(m.group(1) + " " + (m.group(2) or ""))
@@ -170,7 +170,11 @@ def ai_topup(doc: IngestedDoc, s: PolicySummary, calls: list[LlmCall]) -> Policy
     def ok(g: _GVal | None) -> tuple[str, int] | None:
         if not g or not g.value or not g.quote:
             return None
-        page = locate_quote(doc, g.quote, g.page) if doc.has_text_layer else g.page
+        if not doc.has_text_layer:
+            return g.value, g.page
+        page = locate_quote(doc, g.quote, g.page)
+        if not page and (page := locate_quote(doc, g.value, g.page)):
+            g.quote = g.value  # the value itself is on the page; cite that instead of the inexact quote
         return (g.value, page) if page else None
 
     if not s.sum_insured and (v := ok(out.sum_insured)) and (amt := nz.parse_amount(v[0])):

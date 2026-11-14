@@ -25,13 +25,14 @@ from app.modules.extraction.classify import classify
 from app.modules.extraction.extract import extract
 from app.modules.extraction.ingest import IngestedDoc, ingest
 from app.modules.intake.checklist import build_checklist
-from app.modules.pipeline.context import VerificationContext
+from app.modules.pipeline.context import VerificationContext, VerificationResult
 from app.modules.policy.index import build_clauses
 from app.modules.policy.match import link_finding
 from app.modules.policy.summary import build_summary
 from app.schemas.claim import ClaimOut
 from app.schemas.results import (
     AnalysisResults,
+    ChecklistSummary,
     DocumentResult,
     ExtractedField,
     Finding,
@@ -106,6 +107,7 @@ class ClaimState(TypedDict, total=False):
     clauses: list[PolicyClause]
     policy_summary: PolicySummary | None
     findings: list[Finding]
+    checks_passed: list[str]
     calls: list[LlmCall]
     warnings: list[str]
 
@@ -236,6 +238,7 @@ def node_verify(state: ClaimState) -> dict:
         policy_summary=state.get("policy_summary"), clauses=state.get("clauses", []), checklist=checklist,
         page_texts={d.document_id: [p.text for p in d.pages] for d in state["docs"]})
     findings: list[Finding] = []
+    passed: list[str] = []
     warnings = list(state.get("warnings", []))
     try:
         from app.modules.verification.service import run_verification  # Person 2 (M3)
@@ -243,14 +246,26 @@ def node_verify(state: ClaimState) -> dict:
         run_verification = None
     if run_verification is not None:
         try:
-            for f in run_verification(ctx) or []:
+            out = run_verification(ctx)
+            if isinstance(out, VerificationResult):
+                raw, passed = out.findings, list(out.checks_passed)
+            elif isinstance(out, tuple) and len(out) == 2:
+                raw, passed = out[0], list(out[1])
+            else:
+                raw = out or []
+            for f in raw:
                 findings.append(f if isinstance(f, Finding) else Finding.model_validate(f))  # I1 enforced
         except Exception as e:
             log.warning("verification failed: %s\n%s", type(e).__name__, traceback.format_exc())
             warnings.append("Consistency checks could not run completely.")
-    _results[state["claim_id"]].checklist = checklist
+    res = _results[state["claim_id"]]
+    res.checklist = checklist
+    res.checklist_summary = ChecklistSummary(
+        required_present=[c.category for c in checklist if c.required and c.received],
+        required_missing=[c.category for c in checklist if c.required and not c.received and c.evidence is None],
+        referenced_but_missing=[c.category for c in checklist if c.required and not c.received and c.evidence])
     _progress(state, "verify")
-    return {"findings": findings, "warnings": warnings}
+    return {"findings": findings, "checks_passed": passed, "warnings": warnings}
 
 
 def node_policy_match(state: ClaimState) -> dict:
@@ -283,6 +298,8 @@ def node_finalize(state: ClaimState) -> dict:
     res.documents = state["documents"]
     res.fields = state["fields"]
     res.findings = state["findings"]
+    res.checks_passed = state.get("checks_passed", [])
+    res.documents_failed = [d.filename for d in state["documents"] if d.status == "failed"]
     res.clauses = state.get("clauses", [])
     res.policy_summary = state.get("policy_summary")
     res.llm_calls = state["calls"]
