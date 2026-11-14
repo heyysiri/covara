@@ -1,0 +1,537 @@
+{
+  "scenario": "claim_b",
+  "title": "Hero demo claim: amount mismatch, duplicate bill, missing prescription, room rent above cap",
+  "synthetic": true,
+  "claim_input": {
+    "domain": "health",
+    "claim_type": "reimbursement",
+    "claimed_amount": 95000,
+    "patient_name": "Ravi Kumar Sharma"
+  },
+  "upload_set": [
+    {
+      "file": "policy/claim_b_policy.pdf",
+      "doc_type": "policy",
+      "pages": 6
+    },
+    {
+      "file": "medical/claim_b_final_bill.pdf",
+      "doc_type": "final_bill",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_b_final_bill_copy.pdf",
+      "doc_type": "final_bill",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "doc_type": "itemised_bill",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "doc_type": "discharge_summary",
+      "pages": 1
+    },
+    {
+      "file": "medical/claim_b_payment_receipt.pdf",
+      "doc_type": "payment_receipt",
+      "pages": 1
+    }
+  ],
+  "held_back_for_live_fix": [
+    {
+      "file": "medical/_held_back/claim_b_prescription_RX-7781.pdf",
+      "doc_type": "prescription",
+      "pages": 1,
+      "purpose": "Upload during the demo to resolve B-F3."
+    }
+  ],
+  "expected_fields": [
+    {
+      "key": "policy_number",
+      "value": "SSH-2026-004567",
+      "raw_text": "SSH-2026-004567",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 1,
+      "quote": "SSH-2026-004567"
+    },
+    {
+      "key": "member_id",
+      "value": "M-889201",
+      "raw_text": "M-889201",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 1,
+      "quote": "M-889201"
+    },
+    {
+      "key": "insurer",
+      "value": "Sample Shield Health Insurance Co. Ltd.",
+      "raw_text": "Sample Shield Health Insurance Co. Ltd.",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 1,
+      "quote": "Sample Shield Health Insurance Co. Ltd."
+    },
+    {
+      "key": "policyholder_name",
+      "value": "Ravi Kumar Sharma",
+      "raw_text": "Mr. Ravi Kumar Sharma",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 1,
+      "quote": "Mr. Ravi Kumar Sharma"
+    },
+    {
+      "key": "policy_start",
+      "value": "2026-04-01",
+      "raw_text": "01-Apr-2026",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 1,
+      "quote": "01-Apr-2026 to 31-Mar-2027"
+    },
+    {
+      "key": "policy_end",
+      "value": "2027-03-31",
+      "raw_text": "31-Mar-2027",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 1,
+      "quote": "01-Apr-2026 to 31-Mar-2027"
+    },
+    {
+      "key": "sum_insured",
+      "value": 500000,
+      "raw_text": "Rs. 5,00,000",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 1,
+      "quote": "Rs. 5,00,000"
+    },
+    {
+      "key": "room_rent_cap",
+      "value": 5000,
+      "raw_text": "Rs. 5,000 per day",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 1,
+      "quote": "(Rs. 5,000 per day)"
+    },
+    {
+      "key": "waiting_period",
+      "value": "initial 30 days; pre-existing 36 months; specified conditions 24 months",
+      "raw_text": "Section 5",
+      "file": "policy/claim_b_policy.pdf",
+      "page": 5,
+      "quote": "Claims arising within 30 days from the first policy inception date are not payable"
+    },
+    {
+      "key": "patient_name",
+      "value": "Ravi Kumar Sharma",
+      "raw_text": "Ravi Kumar Sharma",
+      "file": "medical/claim_b_final_bill.pdf",
+      "page": 1,
+      "quote": "Ravi Kumar Sharma"
+    },
+    {
+      "key": "hospital_name",
+      "value": "Demo City Care Hospital",
+      "raw_text": "Demo City Care Hospital",
+      "file": "medical/claim_b_final_bill.pdf",
+      "page": 1,
+      "quote": "Demo City Care Hospital"
+    },
+    {
+      "key": "bill_number",
+      "value": "INV-2026-08-10457",
+      "raw_text": "INV-2026-08-10457",
+      "file": "medical/claim_b_final_bill.pdf",
+      "page": 1,
+      "quote": "INV-2026-08-10457"
+    },
+    {
+      "key": "bill_date",
+      "value": "2026-08-15",
+      "raw_text": "15-Aug-2026",
+      "file": "medical/claim_b_final_bill.pdf",
+      "page": 1,
+      "quote": "15-Aug-2026"
+    },
+    {
+      "key": "bill_total",
+      "value": 85000,
+      "raw_text": "Rs. 85,000.00",
+      "file": "medical/claim_b_final_bill.pdf",
+      "page": 1,
+      "quote": "TOTAL PAYABLE: Rs. 85,000.00"
+    },
+    {
+      "key": "admission_date",
+      "value": "2026-08-12",
+      "raw_text": "12-Aug-2026",
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "page": 1,
+      "quote": "12-Aug-2026"
+    },
+    {
+      "key": "discharge_date",
+      "value": "2026-08-15",
+      "raw_text": "15-Aug-2026",
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "page": 1,
+      "quote": "15-Aug-2026"
+    },
+    {
+      "key": "diagnosis",
+      "value": "Acute appendicitis",
+      "raw_text": "Acute appendicitis",
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "page": 1,
+      "quote": "Diagnosis: Acute appendicitis"
+    },
+    {
+      "key": "treatment",
+      "value": "Laparoscopic appendectomy",
+      "raw_text": "Laparoscopic appendectomy performed on 13-Aug-2026",
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "page": 1,
+      "quote": "Laparoscopic appendectomy performed on 13-Aug-2026"
+    },
+    {
+      "key": "referenced_document",
+      "value": "prescription RX-7781",
+      "raw_text": "prescription no. RX-7781",
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "page": 1,
+      "quote": "As per prescription no. RX-7781"
+    },
+    {
+      "key": "room_rent_charged_per_day",
+      "value": 7500,
+      "raw_text": "Room rent - private single room",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Room rent - private single room"
+    },
+    {
+      "key": "receipt_amount",
+      "value": 85000,
+      "raw_text": "Rs. 85,000.00",
+      "file": "medical/claim_b_payment_receipt.pdf",
+      "page": 1,
+      "quote": "AMOUNT RECEIVED: Rs. 85,000.00"
+    },
+    {
+      "key": "receipt_date",
+      "value": "2026-08-15",
+      "raw_text": "15-Aug-2026",
+      "file": "medical/claim_b_payment_receipt.pdf",
+      "page": 1,
+      "quote": "15-Aug-2026"
+    },
+    {
+      "key": "patient_name",
+      "value": "Ravi K Sharma",
+      "raw_text": "Ravi K Sharma",
+      "file": "medical/claim_b_payment_receipt.pdf",
+      "page": 1,
+      "quote": "Ravi K Sharma"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Room rent - private single room",
+        "qty": 3,
+        "rate": 7500,
+        "amount": 22500
+      },
+      "raw_text": "Room rent - private single room",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Room rent - private single room"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Nursing charges",
+        "qty": 3,
+        "rate": 1200,
+        "amount": 3600
+      },
+      "raw_text": "Nursing charges",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Nursing charges"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Surgeon fee",
+        "qty": 1,
+        "rate": 18000,
+        "amount": 18000
+      },
+      "raw_text": "Surgeon fee",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Surgeon fee"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Anaesthetist fee",
+        "qty": 1,
+        "rate": 6000,
+        "amount": 6000
+      },
+      "raw_text": "Anaesthetist fee",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Anaesthetist fee"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Operation theatre charges",
+        "qty": 1,
+        "rate": 12000,
+        "amount": 12000
+      },
+      "raw_text": "Operation theatre charges",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Operation theatre charges"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Laparoscopic surgical consumables",
+        "qty": 1,
+        "rate": 9500,
+        "amount": 9500
+      },
+      "raw_text": "Laparoscopic surgical consumables",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Laparoscopic surgical consumables"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Medicines and pharmacy",
+        "qty": 1,
+        "rate": 7400,
+        "amount": 7400
+      },
+      "raw_text": "Medicines and pharmacy",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Medicines and pharmacy"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Diagnostics (lab and ultrasound)",
+        "qty": 1,
+        "rate": 5000,
+        "amount": 5000
+      },
+      "raw_text": "Diagnostics (lab and ultrasound)",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Diagnostics (lab and ultrasound)"
+    },
+    {
+      "key": "line_item",
+      "value": {
+        "description": "Registration and miscellaneous",
+        "qty": 1,
+        "rate": 1000,
+        "amount": 1000
+      },
+      "raw_text": "Registration and miscellaneous",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "Registration and miscellaneous"
+    }
+  ],
+  "expected_findings": [
+    {
+      "id": "B-F1",
+      "rule_id": "V4",
+      "issue_type": "amount_mismatch",
+      "kind": "confirmed",
+      "severity": "medium",
+      "blocking": true,
+      "title": "Bill total differs from the amount you are claiming",
+      "extracted_value": 85000,
+      "comparison_value": 95000,
+      "evidence": [
+        {
+          "file": "medical/claim_b_final_bill.pdf",
+          "page": 1,
+          "quote": "TOTAL PAYABLE: Rs. 85,000.00"
+        },
+        {
+          "source": "claim_form",
+          "field": "claimed_amount",
+          "value": 95000
+        }
+      ],
+      "clause": null,
+      "exposure_amount": null,
+      "fix": "Correct the claimed amount to the bill total (85000) if the bill is right."
+    },
+    {
+      "id": "B-F2",
+      "rule_id": "V1",
+      "issue_type": "duplicate_bill",
+      "kind": "confirmed",
+      "severity": "high",
+      "blocking": true,
+      "title": "The same invoice appears in two uploaded files",
+      "extracted_value": "INV-2026-08-10457",
+      "comparison_value": "INV-2026-08-10457",
+      "evidence": [
+        {
+          "file": "medical/claim_b_final_bill.pdf",
+          "page": 1,
+          "quote": "INV-2026-08-10457"
+        },
+        {
+          "file": "medical/claim_b_final_bill_copy.pdf",
+          "page": 1,
+          "quote": "INV-2026-08-10457"
+        }
+      ],
+      "clause": null,
+      "exposure_amount": null,
+      "fix": "Keep one copy of the final bill and remove the other from the upload."
+    },
+    {
+      "id": "B-F3",
+      "rule_id": "V7",
+      "issue_type": "referenced_document_missing",
+      "kind": "confirmed",
+      "severity": "high",
+      "blocking": true,
+      "title": "Discharge summary refers to prescription RX-7781, which was not uploaded",
+      "extracted_value": "prescription RX-7781",
+      "comparison_value": null,
+      "evidence": [
+        {
+          "file": "medical/claim_b_discharge_summary.pdf",
+          "page": 1,
+          "quote": "As per prescription no. RX-7781"
+        }
+      ],
+      "clause": {
+        "file": "policy/claim_b_policy.pdf",
+        "page": 6,
+        "clause_ref": "7.1",
+        "type": "condition",
+        "quote": "prescriptions, diagnostic reports and payment receipts"
+      },
+      "exposure_amount": null,
+      "fix": "Ask Demo City Care Hospital for a copy of prescription RX-7781 and upload it.",
+      "owner": "hospital"
+    },
+    {
+      "id": "B-F4",
+      "rule_id": "V10",
+      "issue_type": "room_rent_above_cap",
+      "kind": "possible",
+      "severity": "medium",
+      "blocking": false,
+      "title": "Room rent is above the policy limit; part of the bill may be reduced",
+      "extracted_value": 7500,
+      "comparison_value": 5000,
+      "evidence": [
+        {
+          "file": "medical/claim_b_itemised_bill.pdf",
+          "page": 1,
+          "quote": "Room rent - private single room"
+        }
+      ],
+      "clause": {
+        "file": "policy/claim_b_policy.pdf",
+        "page": 4,
+        "clause_ref": "4.1",
+        "type": "sublimit",
+        "quote": "Room rent is payable up to 1% of the Sum Insured per day"
+      },
+      "exposure_amount": 23867,
+      "exposure_calculation": {
+        "days": 3,
+        "excess_room_rent": 7500,
+        "associated_medical_expenses": 49100,
+        "eligible_to_actual_ratio": 0.6667,
+        "proportionate_reduction": 16366.67,
+        "note": "Informational estimate under clause 4.1 and 1.4 of this synthetic policy; not a coverage decision."
+      },
+      "fix": "Ask the insurer whether proportionate deduction applies to the associated charges.",
+      "owner": "insurer"
+    },
+    {
+      "id": "B-F5",
+      "rule_id": "V2",
+      "issue_type": "name_variant",
+      "kind": "possible",
+      "severity": "low",
+      "blocking": false,
+      "title": "Patient name is written differently on the payment receipt",
+      "extracted_value": "Ravi K Sharma",
+      "comparison_value": "Ravi Kumar Sharma",
+      "evidence": [
+        {
+          "file": "medical/claim_b_payment_receipt.pdf",
+          "page": 1,
+          "quote": "Ravi K Sharma"
+        },
+        {
+          "file": "medical/claim_b_final_bill.pdf",
+          "page": 1,
+          "quote": "Ravi Kumar Sharma"
+        }
+      ],
+      "clause": null,
+      "exposure_amount": null,
+      "fix": "Confirm it is the same person; ask the hospital to reissue the receipt if needed.",
+      "owner": "hospital"
+    }
+  ],
+  "expected_checks_passed": [
+    "Admission date is not after discharge date",
+    "Admission and discharge fall inside the policy period",
+    "Policy number and member ID agree across policy, bill and discharge summary",
+    "Line items add up to the bill total (85000)",
+    "Receipt amount equals the bill total",
+    "All required documents for a reimbursement claim are present (policy, final bill, itemised bill, discharge summary, receipt)",
+    "No waiting-period conflict (diagnosis well after the 30-day initial waiting period)"
+  ],
+  "expected_checklist": {
+    "required_present": [
+      "policy",
+      "final_bill",
+      "itemised_bill",
+      "discharge_summary",
+      "payment_receipt"
+    ],
+    "required_missing": [],
+    "referenced_but_missing": [
+      "prescription"
+    ]
+  },
+  "expected_readiness": "needs_attention",
+  "expected_packet_status": "INCOMPLETE - 3 blocking items",
+  "demo_fix_sequence": [
+    "Edit the claimed amount from 95000 to 85000 (resolves B-F1)",
+    "Remove claim_b_final_bill_copy.pdf (resolves B-F2)",
+    "Upload claim_b_prescription_RX-7781.pdf (resolves B-F3)",
+    "Re-check: blocking items drop to 0; B-F4 and B-F5 remain as items to review; packet becomes 'Prepared for submission'"
+  ],
+  "after_fix": {
+    "expected_packet_status": "Prepared for submission",
+    "expected_open_findings": [
+      "B-F4",
+      "B-F5"
+    ],
+    "expected_blocking_count": 0
+  }
+}
