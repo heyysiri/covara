@@ -106,10 +106,47 @@ def main() -> int:
     }
     quotes_ok = sum(1 for f in results.fields if f.evidence.quote and f.evidence.bbox is not None)
 
+    # Findings (produced by Person 2's engine through the pipeline) vs ground truth.
+    exp_f = {f["rule_id"] + ":" + f["issue_type"]: f for f in truth["expected_findings"]}
+    got_f = {f.rule_id + ":" + f.issue_type: f for f in results.findings}
+    implemented = {"V1", "V2", "V3", "V4", "V5", "V7", "V14"}  # engine rules that exist today
+    finding_checks = {}
+    for key, f in exp_f.items():
+        if f["rule_id"] in implemented:
+            g = got_f.get(key)
+            finding_checks[f"{f['id']} {key} found" + (" (blocking)" if f["blocking"] else "")] = bool(
+                g and g.blocking == f["blocking"])
+    not_built = [f"{f['id']} {f['rule_id']}" for f in exp_f.values() if f["rule_id"] not in implemented]
+    expected_keys = set(exp_f)
+    extra = sorted(k for k in got_f if k not in expected_keys and not k.startswith("V14"))
+    plan_ok = all(a.finding_ids or a.group in ("upload", "consistent") for a in results.action_plan)
+    finding_checks["every action cites a finding or checklist item"] = plan_ok
+
+    # Demo fix sequence: correct amount, remove duplicate, upload held-back prescription, re-check.
+    steps = truth["demo_fix_sequence"]
+    docs_now = client.get(f"/claims/{cid}/documents").json()
+    copy = next(d for d in docs_now if d["original_filename"] == "claim_b_final_bill_copy.pdf")
+    client.patch(f"/claims/{cid}", json={"claimed_amount": 85000})
+    client.delete(f"/claims/{cid}/documents/{copy['id']}")
+    rx = SAMPLES / "medical" / "_held_back" / "claim_b_prescription_RX-7781.pdf"
+    client.post(f"/claims/{cid}/documents", data={"category": "prescription"},
+                files=[("files", (rx.name, rx.read_bytes(), "application/pdf"))])
+    client.post(f"/claims/{cid}/analyze")
+    after = AnalysisResults.model_validate(client.get(f"/claims/{cid}/results").json())
+    open_ids = sorted(f"{f.rule_id}:{f.issue_type}" for f in after.findings if f.status == "open"
+                      and not f.rule_id == "V14")
+    fix_checks = {
+        "after fixes: packet says Prepared for submission": after.packet_status == truth["after_fix"]["expected_packet_status"],
+        "after fixes: no blocking findings": not any(f.blocking for f in after.findings),
+        "after fixes: prescription no longer missing": not any(f.issue_type == "referenced_document_missing"
+                                                                for f in after.findings),
+    }
+
     print(f"\nFields: {ok}/{ok + miss} expected values extracted correctly")
     for m in misses:
         print("  MISS", m)
-    for title, checks in (("Policy", summary_checks), ("Checklist", checklist_checks)):
+    for title, checks in (("Policy", summary_checks), ("Checklist", checklist_checks),
+                          ("Findings (engine via pipeline)", finding_checks), ("Demo fix sequence", fix_checks)):
         print(f"\n{title}:")
         for k, v in checks.items():
             print(f"  {'PASS' if v else 'FAIL'}  {k}")
@@ -118,8 +155,13 @@ def main() -> int:
     print(f"Providers: {results.providers_used or ['rules']}; model calls: {len(results.llm_calls)} "
           f"({sum(c.ok for c in results.llm_calls)} ok)")
     print(f"Readiness: {results.readiness_status} | packet: {results.packet_status}")
-    print("(Findings come from Person 2's verification engine; none are produced here.)")
-    return 0 if miss == 0 and all(summary_checks.values()) and all(checklist_checks.values()) else 1
+    print(f"Findings: expected-but-not-built rules (Person 2): {not_built or 'none'}; "
+          f"unexpected extra findings: {extra or 'none'}")
+    print(f"After fix sequence, open findings: {open_ids}; packet: {after.packet_status}; "
+          f"readiness: {after.readiness_status}")
+    print(f"Checks passed listed: {len(results.checks_passed)}")
+    allc = [summary_checks, checklist_checks, finding_checks, fix_checks]
+    return 0 if miss == 0 and all(all(c.values()) for c in allc) else 1
 
 
 if __name__ == "__main__":

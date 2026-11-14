@@ -13,7 +13,7 @@ Pending (Person 2): verification rules (M3, plugs in via `app/modules/verificati
 
 **AI provider: Claude, with or without an API key.** If `ANTHROPIC_API_KEY` is set, the backend calls the Claude API directly. If not, it uses your **logged-in Claude Code session** through its headless mode (`claude -p`, auto-detected on PATH or in the VS Code extension; override with `CLAUDE_CLI_PATH`, disable with `CLAUDE_USE_CLI=false`). Either way Claude reads the PDF/image itself and returns schema-validated JSON; rules top up anything it misses, and every value carries document, page and a quote located in the page text. Gemini and Groq remain optional fallbacks. With no provider at all, rule-based extraction over the PDF text layer still runs (weaker, see below). Calls through the Claude Code session are for local dev and demos, not production.
 
-**Measured accuracy** on demo claim B (`cd backend && .venv/bin/python -m tests.eval_claim_b`): Claude extracts 30 of 30 expected fields and passes all policy and checklist checks; the rules-only fallback gets 13 of 30. Findings are produced by the verification engine (Person 2), not by this module.
+**Measured accuracy** on demo claim B (`cd backend && .venv/bin/python -m tests.eval_claim_b`): Claude extracts 40 of 40 expected fields, finds all 4 findings the verification engine can produce, and the demo fix sequence ends at "Prepared for submission"; the rules-only fallback gets 22 of 40 and is not demo quality.
 
 ## Structure
 

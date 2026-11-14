@@ -3,7 +3,7 @@
 Shared status board for **Person 1** and **Person 2**. Read this before you start work; update it with every change.
 Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, phases, handoffs H1-H9, contract). Original plan: [PLAN.md](PLAN.md).
 
-**Last updated:** 2026-11-14 by Person 1 (merged Person 2's verification engine `8dfba15` and folder/zip upload `e28637e`; Person 1 work is in `person1-pipeline`)
+**Last updated:** 2026-11-14 by Person 1 (verification engine now wired into the pipeline; all merged to `main`)
 
 ## How to use this file
 
@@ -15,7 +15,7 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 
 ## Current phase
 
-**Person 1 modules are built (Phases 2-6 for P1's scope).** Waiting on Person 2's verification engine (M3) to produce findings; until then the pipeline returns extraction, policy, checklist and checklist-based actions, and **no findings**. Next joint milestone: G3 (document evidence -> policy clause -> issue -> action on claim B).
+**Person 1 modules are built and Person 2's verification engine is wired in.** The full claim B demo path works end to end with Claude: upload -> analyse -> 3 blocking findings + 1 to review -> fix sequence -> Re-check -> "Prepared for submission" (measured below). Still missing for the demo: V10 (room-rent exposure) and V11 (waiting period) rules, the Findings/Evidence/Packet tabs, and the report PDF (all Person 2). Next joint milestone: G3 (evidence viewer + policy clause on a finding).
 
 ## Task board
 
@@ -28,7 +28,7 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 ### Phase 2 - Foundation
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Contract freeze (shared schemas, TS mirror) | both | **two drafts exist, must be reconciled** | P1: `backend/app/schemas/results.py` + `frontend/src/types/results.ts` (used by the pipeline, API and UI). P2: `backend/app/schemas/contract.py` (used by the verification engine). Models differ slightly, see open item 11. D1-D10 still need an explicit OK. |
+| Contract freeze (shared schemas, TS mirror) | both | **reconciled by adapter** | Two model sets remain (P1 `schemas/results.py` = API/UI; P2 `schemas/contract.py` = engine input/output). They are field-compatible; `backend/app/modules/pipeline/verify_adapter.py` converts between them and shapes values for the engine. `EvidenceRef.source` now has `document`, `claim_form` and `checklist` on both sides. Merging into one file is optional cleanup. D1-D10 still need an explicit OK. |
 | Feature-folder layout | P1 | **partly done** | All new code is in `backend/app/modules/*`, `backend/app/core`, `frontend/src/features/*`. Phase 1 files (`api/routes/claims.py`, `schemas/claim.py`, `services/claim_store.py`, `DocumentUpload.tsx`) were **not moved**, only extended. |
 | `claimed_amount` (+ `patient_name`, consent) on claim form/API | P1 | **done** | `POST/PATCH /claims` |
 | `langgraph` in `requirements.txt` | P1 | **done** | also `anthropic` |
@@ -45,14 +45,14 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 | M8 Pipeline & platform | **done** | LangGraph graph (ingest -> classify -> extract -> normalize -> policy -> verify -> policy_match -> explain_plan -> finalize), background run, polling, cache by file hash (W1), `llm_calls` log, demo mode, one bad document never fails the run. |
 | W7 consent + delete | done | |
 | W1 safety net (cache, demo mode) | done | `DEMO_MODE=true` replays cache only |
-| W4 re-check loop | **partly done** | Re-check, field edits, document delete all work. The finding disappearing needs P2's engine. |
+| W4 re-check loop | **done** | Edit claimed amount, remove the duplicate, upload the prescription, Re-check: findings clear and the packet status flips. Measured on claim B (below). Backend only; the packet PDF/watermark is P2's. |
 | W8 review gate as a LangGraph `interrupt()` | **not done** | Implemented as badge + confirm/edit + Re-check instead (no pause/resume). |
 | W5 Sarvam Vision (Indic/handwritten) | **not done** | Key present in env but no integration yet. |
 
 ### Phase 3+ - Person 2 (from the board, unchanged by P1)
 | Task | Owner | Status |
 |---|---|---|
-| Verification rules V1-V5, V7, V14 with unit tests | P2 | **done** (`8dfba15`, 48 tests) | **Not yet wired into the pipeline** (open item 11). |
+| Verification rules V1-V5, V7, V14 with unit tests | P2 | **done and wired into the pipeline** (`8dfba15`; adapter by P1) | Runs in the `verify` node on every analysis. |
 | Verification rules V10 (room-rent exposure), V11 (waiting period) | P2 | todo | `PolicySummary` is now available from P1 (`ctx.policy_summary`). |
 | Upload accepts a folder or a .zip | P2 (requested by user) | **done** (`e28637e`) | Client-side unzip; merged with P1's claim form/consent/documents list. |
 | Workspace shell + tabs (Findings, Evidence viewer, Packet) | P2 | todo (`AnalysisView` accepts `extraTabs`) |
@@ -60,14 +60,20 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 
 ## Measured results (claim B, ground truth by P2)
 
-Run: `cd backend && .venv/bin/python -m tests.eval_claim_b` (add `--rules` for offline).
+Run: `cd backend && .venv/bin/python -m tests.eval_claim_b` (add `--rules` for offline, no AI). It uploads the 6 claim B files, analyses, applies the demo fix sequence (correct amount, remove duplicate, upload the held-back prescription) and re-checks.
 
-| Path | Fields correct | Policy checks | Checklist checks | Time |
-|---|---|---|---|---|
-| Claude (via Claude Code session) | **30 / 30** | 4 / 4 | 3 / 3 | ~50 s for 6 documents |
-| Rules only (no AI) | 13 / 30 | 3 / 4 | 3 / 3 | ~1 s |
+| Check | Claude (via Claude Code session) | Rules only (no AI) |
+|---|---|---|
+| Expected fields extracted correctly | **40 / 40** | 22 / 40 |
+| Policy summary + clause checks | 4 / 4 | 3 / 4 (waiting periods missed) |
+| Checklist checks | 3 / 3 | 3 / 3 |
+| Findings the engine can produce (B-F1 V4, B-F2 V1, B-F3 V7, B-F5 V2) found with correct blocking flag | **4 / 4** | 3 / 4 (name variant missed) |
+| Unexpected extra findings | none | 1 false alarm (V4 line items) |
+| First analysis packet status | INCOMPLETE - 3 blocking items | INCOMPLETE - 4 blocking items |
+| After fix sequence + Re-check | **Prepared for submission** (only the name variant left open) | still INCOMPLETE (false V4 alarm) |
+| Time | ~1 min first analysis, ~1 min for the re-check including one new document | ~1 s |
 
-Not measured: claims A and C (not made yet), handwritten/Indic documents, scanned images, latency under the real Claude API. The first Claude run missed 2 of 4 policy checks because the policy schedule is a table (label and value on separate lines); that is fixed and covered by a regression test.
+Not covered: B-F4 (V10 room-rent exposure, rule not written yet), V11, claims A and C (not made yet), handwritten/Indic documents, scanned images. The no-AI path is a fallback only and is not demo quality. Model: Claude through the Claude Code session; speed will differ on the real API.
 
 ## Handoffs
 
@@ -81,12 +87,12 @@ Not measured: claims A and C (not made yet), handwritten/Indic documents, scanne
 | H6 | First correct `ExtractedField`s | P1 -> P2 | **done** (30/30 on claim B with Claude) |
 | H7 | Real `PolicyClause`s + `PolicySummary` | P1 -> P2 | **done** |
 | H8 | `Action[]` | P1 -> P2 | **done**, but only checklist actions until P2's findings arrive |
-| H9 | Findings with evidence | P2 -> P1 | **waiting on P2** |
+| H9 | Findings with evidence | P2 -> P1 | **done** (`8dfba15`, wired by P1): V1-V5, V7, V14 reach the plan and results |
 
 ## Open items / heads-up
 
 **For Person 2 (raised 2026-11-14 by Person 1) - please read:**
-1. **Plug in your engine at one place:** create `backend/app/modules/verification/service.py` with `def run_verification(ctx: VerificationContext)`. The pipeline imports it automatically. Return a `VerificationResult(findings=[...], checks_passed=[...])` (from `app/modules/pipeline/context.py`); a plain `list[Finding]` or a `(findings, checks_passed)` tuple also works. `Finding` rejects empty `evidence` (I1).
+1. **Your engine is already plugged in** through `pipeline/verify_adapter.py` (no action needed). Optional override: a `verification/service.py` with `run_verification(ctx: VerificationContext)` takes precedence over the adapter. Return a `VerificationResult(findings=[...], checks_passed=[...])` (from `app/modules/pipeline/context.py`); a plain `list[Finding]` or a `(findings, checks_passed)` tuple also works. `Finding` rejects empty `evidence` (I1).
 2. **`ctx` gives you:** `claim` (claim form: `claimed_amount`, `patient_name`, `claim_type`), `documents`, `fields` (normalised), `policy_summary`, `clauses`, `checklist`, `page_texts`. Use `ctx.fields_for("bill_total")` and `ctx.claim_form_ref("claimed_amount")` to build the claim-form `EvidenceRef`.
 3. **Normalisation you can rely on:** dates are ISO `YYYY-MM-DD` strings; amounts are floats in INR; names are title-cased without Mr/Mrs/Dr; `line_item` has `value` = amount and `raw_text` = description (**qty and rate are not extracted yet**, so V4 line-item arithmetic can check amounts vs the total only); `referenced_document.value` is a doc type (`prescription`, `diagnostic_report`); `waiting_period.value` is days (months = 30.4 days, rounded). Unknown stays `None`.
 4. **Two patient-name sources:** `patient_name` appears in the bill, discharge summary and receipt (one field per document). For V2, compare across `ctx.fields_for("patient_name")` and `policyholder_name`.
@@ -107,7 +113,7 @@ P2-9. **Fixture regenerated:** the copy bill, bill and discharge summary now als
 
 P2-10. **Heads-up, frontend upload changed (M1 is yours, so pull before editing it):** `frontend/src/components/DocumentUpload.tsx` now takes files, a folder (button or drag-and-drop) or a `.zip`. New file `frontend/src/lib/ingest.ts` does the work in the browser (`fflate` added to `package.json`); hidden/system files (`.DS_Store`, `__MACOSX`), non-PDF/PNG/JPG files and nested zips are skipped with a notice, zips are capped (200 entries, 200 MB total, 20 MB per file). The backend API is **unchanged**: each document is still uploaded through `POST /claims/{id}/documents`. Category guessing now falls back to the folder path. New demo file `sample_documents/claim_b_upload.zip` (the 6 upload files, without the held-back prescription).
 
-11. **Status (Person 1):** items P2-6 (reconcile the two contracts) and P2-7/8 (wire the engine into the pipeline's `verify` node) are **not done yet**: the engine currently exists but is not called by the pipeline, and `results.py` vs `contract.py` still differ. P2-9 and P2-10 acknowledged: fixture regenerated (pulled), upload merged (`DocumentUpload.tsx` now has both the claim form/consent/documents list and folder/zip upload).
+11. **Status (Person 1):** P2-6 (reconcile contracts), P2-7 and P2-8 (engine signature and expected inputs) are **done via the adapter** (`app/modules/pipeline/verify_adapter.py`): it converts models, passes `line_item` values from the itemised bill only (the engine sums every line item it sees, so passing both bills would double count), and passes `referenced_document` as written ("prescription no. RX-7781"). `EvidenceRef` accepts `source=checklist`. P2-9 and P2-10 acknowledged: fixture pulled, upload merged. **Still yours (P2):** V10, V11, the Findings/Evidence/Packet tabs, the report/packet PDF. To add a rule, append it to `RULES` in `verification/rules.py`; the pipeline needs no change.
 
 **Decisions still proposed, not confirmed** (see section 4 of the plan): D1 async analyze + polling (implemented), D2 `claimed_amount` on the claim form (implemented), D3 readiness rule (implemented in `plan.readiness`), D4 required-documents checklist (implemented), D5 packet wording/watermark (status string only, no PDF yet), D6 model names/keys (changed: Claude via session or `ANTHROPIC_API_KEY`), D7 feature-folder layout (new code only), D8 confidence threshold 0.75 (implemented as a badge, not a pause), D9 cache key (implemented), D10 tiers.
 
@@ -115,6 +121,7 @@ P2-10. **Heads-up, frontend upload changed (M1 is yours, so pull before editing 
 
 | Date | Who | Change | Commit |
 |---|---|---|---|
+| 2026-11-14 | P1 | **Wired the verification engine into the pipeline** (`verify_adapter.py`): V1-V5, V7, V14 findings now reach clause linking, the action plan and the packet status; `EvidenceRef.source=checklist`; packet blocking count no longer double-counts a V7 finding and its upload action; `referenced_document` keeps the wording as written; `member_id` extracted from discharge summaries. Claim B eval extended with findings and the demo fix sequence: Claude 40/40 fields, 4/4 findings, packet goes INCOMPLETE (3 blocking) -> Prepared for submission; rules-only 22/40. 76 backend tests pass | this commit |
 | 2026-11-14 | P1 | Merged `origin/main` (verification engine, folder/zip upload) into `person1-pipeline`; resolved conflicts in `DocumentUpload.tsx` (kept both sides) and this file | merge commit |
 | 2026-11-14 | P1 | Contract reconciliation with P2's asks: `EvidenceRef.source` (document / claim_form), `checks_passed`, `checklist_summary`, `documents_failed`, `VerificationResult`, `ctx.claim_form_ref`; `DELETE /claims/{id}/documents/{doc_id}` + Remove button; Claim B accuracy eval (`tests/eval_claim_b.py`): Claude 30/30, rules 13/30; fixed table-layout policy parsing; 27 backend tests pass | this branch |
 | 2026-11-14 | P1 | Claude provider: API key path and no-key path through the logged-in Claude Code session (`claude -p`), refusal handling, cache, schema validation | this branch |

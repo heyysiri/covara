@@ -335,3 +335,22 @@ def test_delete_single_document(client, docs):
     assert len(client.get(f"/claims/{cid}/documents").json()) == 3
     assert len(list(path_dir.iterdir())) == n_files - 1
     assert client.delete(f"/claims/{cid}/documents/{first['id']}").status_code == 404
+
+
+def test_real_engine_runs_in_pipeline(client, docs):
+    """No stand-in: Person 2's engine is called through the adapter and its findings reach the plan."""
+    res = _analyze(client, _claim_with_docs(client, docs))  # claimed 95,000 vs bill 85,000
+    by_rule = {(f["rule_id"], f["issue_type"]): f for f in res["findings"]}
+    amount = by_rule[("V4", "amount_mismatch")]
+    assert amount["blocking"] and {e["source"] for e in amount["evidence"]} == {"document", "claim_form"}
+    assert ("V7", "referenced_document_missing") in by_rule
+    assert res["checks_passed"], "passed checks should be listed as 'appears consistent'"
+    # The V7 finding and the checklist upload action describe one issue: counted once in the packet status.
+    blocking = [f for f in res["findings"] if f["blocking"]]
+    assert res["packet_status"] == f"INCOMPLETE - {len(blocking)} blocking items"
+    act = next(a for a in res["action_plan"] if amount["id"] in a["finding_ids"])
+    assert "85,000 vs 95,000" in " ".join(act["how"]) and act["blocking"]
+    # fixing the claimed amount and re-checking clears that finding
+    client.patch(f"/claims/{res['claim_id']}", json={"claimed_amount": 85000})
+    res2 = _analyze(client, res["claim_id"])
+    assert ("V4", "amount_mismatch") not in {(f["rule_id"], f["issue_type"]) for f in res2["findings"]}

@@ -240,10 +240,13 @@ def node_verify(state: ClaimState) -> dict:
     findings: list[Finding] = []
     passed: list[str] = []
     warnings = list(state.get("warnings", []))
-    try:
-        from app.modules.verification.service import run_verification  # Person 2 (M3)
+    try:  # optional override hook: app/modules/verification/service.py::run_verification(ctx)
+        from app.modules.verification.service import run_verification
     except ImportError:
-        run_verification = None
+        try:  # default: Person 2's engine through the adapter
+            from app.modules.pipeline.verify_adapter import run_engine as run_verification
+        except ImportError:
+            run_verification = None
     if run_verification is not None:
         try:
             out = run_verification(ctx)
@@ -306,8 +309,9 @@ def node_finalize(state: ClaimState) -> dict:
     res.providers_used = sorted({c.provider for c in state["calls"] if c.ok})
     res.warnings = state.get("warnings", [])
     res.readiness_status, res.readiness_explanation = readiness(res.checklist, res.findings)
+    # A blocking upload action backed by a finding (e.g. V7) is the same issue: count it once.
     blocking = sum(1 for f in res.findings if f.blocking and f.status == "open") + sum(
-        1 for a in res.action_plan if a.group == "upload" and a.blocking and not a.done)
+        1 for a in res.action_plan if a.group == "upload" and a.blocking and not a.done and not a.finding_ids)
     res.packet_status = f"INCOMPLETE - {blocking} blocking items" if blocking else "Prepared for submission"
     _progress(state, "finalize")
     res.status = RunStatus.COMPLETE

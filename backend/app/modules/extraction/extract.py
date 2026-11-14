@@ -24,7 +24,7 @@ from app.modules.extraction import normalize as nz
 from app.modules.extraction.ingest import IngestedDoc, find_bbox, locate_quote
 from app.schemas.results import CRITICAL_KEYS, DocType, EvidenceRef, ExtractedField, LlmCall
 
-PROMPT_VERSION = "extract-v3"
+PROMPT_VERSION = "extract-v5"
 
 KEYS_BY_TYPE: dict[str, list[str]] = {
     "policy": ["policyholder_name", "insurer", "policy_number", "member_id", "policy_start",
@@ -32,7 +32,7 @@ KEYS_BY_TYPE: dict[str, list[str]] = {
     "final_bill": ["patient_name", "age", "hospital_name", "policy_number", "member_id", "bill_number",
                    "bill_date", "admission_date", "discharge_date", "bill_total",
                    "room_rent_charged_per_day", "line_item"],
-    "discharge_summary": ["patient_name", "age", "hospital_name", "policy_number", "admission_date",
+    "discharge_summary": ["patient_name", "age", "hospital_name", "policy_number", "member_id", "admission_date",
                           "discharge_date", "diagnosis", "diagnosis_date", "treatment",
                           "referenced_document"],
     "prescription": ["patient_name", "hospital_name", "prescribed_item"],
@@ -193,14 +193,26 @@ def _prompt(doc_type: str, keys: list[str]) -> str:
         "- Copy values exactly as written; never guess. Omit a key if it is not present.\n"
         "- 'quote' must be copied verbatim from the page (it is checked against the page text).\n"
         "- line_item: one entry per billed line, value 'description | amount'. Skip totals/taxes.\n"
-        "- referenced_document: documents the text refers to (e.g. a prescription or lab report),"
-        " value = the referenced document's type: prescription, diagnostic_report, discharge_summary,"
-        " final_bill, payment_receipt.\n"
+        "- referenced_document: documents the text refers to (e.g. a prescription or lab report);"
+        " value = the reference exactly as written, e.g. 'prescription no. RX-7781'.\n"
         "- waiting_period: value = duration as written (e.g. '24 months'), quote = the sentence.\n"
         "- room_rent_cap: the room rent limit as written (e.g. '1% of Sum Insured per day').\n"
         "- diagnosis / treatment: the name only, without dates or surrounding clauses.\n"
         "- confidence: your certainty that the value is correct and complete (0-1)."
     )
+
+
+def reference_type(text: str) -> str:
+    """Canonical document type for a free-text reference ("prescription no. RX-7781" -> "prescription")."""
+    t = text.lower()
+    for kind, words in (("prescription", ("prescription", "medicine", "medication")),
+                        ("diagnostic_report", ("report", "lab", "investigation", "scan", "x-ray", "xray", "mri",
+                                               "ultrasound", "usg", "ecg", "test")),
+                        ("discharge_summary", ("discharge",)),
+                        ("final_bill", ("bill", "invoice")), ("payment_receipt", ("receipt",))):
+        if any(w in t for w in words):
+            return kind
+    return re.sub(r"\W+", "_", t).strip("_")
 
 
 def _duration_days(raw: str | None) -> float | None:
@@ -249,7 +261,7 @@ def ai_extract(doc: IngestedDoc, doc_type: DocType, calls: list[LlmCall]) -> tup
             if value is None:
                 continue
         elif g.key == "referenced_document":
-            value = raw.strip().lower().replace(" ", "_")
+            value = reference_type(raw)
         fields.append(_field(doc, g.key, raw, page, quote, conf, provider, value=value))
     return fields, provider
 

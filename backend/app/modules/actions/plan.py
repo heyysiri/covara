@@ -98,7 +98,8 @@ def checklist_actions(checklist: list[ChecklistItem], ctx: dict[str, str]) -> li
 def finding_action(f: Finding, ctx: dict[str, str], clauses: dict[str, PolicyClause]) -> Action:
     owner, group = RULE_ROUTING.get(f.rule_id, ("user", "verify_or_correct"))
     ev = next((e for e in f.evidence if e.source == "document"), f.evidence[0])
-    where = f"{ev.filename}, page {ev.page_number}" if ev.source == "document" else "your claim form"
+    where = (f"{ev.filename}, page {ev.page_number}" if ev.source == "document"
+             else "your claim form" if ev.source == "claim_form" else "the document checklist")
     vals = ""
     if f.extracted_value is not None and f.comparison_value is not None:
         vals = f" ({f.extracted_value} vs {f.comparison_value})"
