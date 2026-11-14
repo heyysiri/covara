@@ -162,6 +162,86 @@
       "quote": "TOTAL PAYABLE: Rs. 85,000.00"
     },
     {
+      "key": "policy_number",
+      "value": "SSH-2026-004567",
+      "raw_text": "SSH-2026-004567",
+      "file": "medical/claim_b_final_bill.pdf",
+      "page": 1,
+      "quote": "SSH-2026-004567"
+    },
+    {
+      "key": "member_id",
+      "value": "M-889201",
+      "raw_text": "M-889201",
+      "file": "medical/claim_b_final_bill.pdf",
+      "page": 1,
+      "quote": "M-889201"
+    },
+    {
+      "key": "policy_number",
+      "value": "SSH-2026-004567",
+      "raw_text": "SSH-2026-004567",
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "page": 1,
+      "quote": "SSH-2026-004567"
+    },
+    {
+      "key": "member_id",
+      "value": "M-889201",
+      "raw_text": "M-889201",
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "page": 1,
+      "quote": "M-889201"
+    },
+    {
+      "key": "bill_number",
+      "value": "INV-2026-08-10457",
+      "raw_text": "INV-2026-08-10457",
+      "file": "medical/claim_b_final_bill_copy.pdf",
+      "page": 1,
+      "quote": "INV-2026-08-10457"
+    },
+    {
+      "key": "bill_date",
+      "value": "2026-08-15",
+      "raw_text": "15-Aug-2026",
+      "file": "medical/claim_b_final_bill_copy.pdf",
+      "page": 1,
+      "quote": "15-Aug-2026"
+    },
+    {
+      "key": "bill_total",
+      "value": 85000,
+      "raw_text": "Rs. 85,000.00",
+      "file": "medical/claim_b_final_bill_copy.pdf",
+      "page": 1,
+      "quote": "TOTAL PAYABLE: Rs. 85,000.00"
+    },
+    {
+      "key": "patient_name",
+      "value": "Ravi Kumar Sharma",
+      "raw_text": "Ravi Kumar Sharma",
+      "file": "medical/claim_b_final_bill_copy.pdf",
+      "page": 1,
+      "quote": "Ravi Kumar Sharma"
+    },
+    {
+      "key": "hospital_name",
+      "value": "Demo City Care Hospital",
+      "raw_text": "Demo City Care Hospital",
+      "file": "medical/claim_b_final_bill_copy.pdf",
+      "page": 1,
+      "quote": "Demo City Care Hospital"
+    },
+    {
+      "key": "bill_number",
+      "value": "INV-2026-08-10457",
+      "raw_text": "INV-2026-08-10457",
+      "file": "medical/claim_b_itemised_bill.pdf",
+      "page": 1,
+      "quote": "INV-2026-08-10457"
+    },
+    {
       "key": "admission_date",
       "value": "2026-08-12",
       "raw_text": "12-Aug-2026",

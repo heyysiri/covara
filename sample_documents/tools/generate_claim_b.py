@@ -409,6 +409,19 @@ def expected() -> dict:
         field("bill_number", INVOICE_NO, INVOICE_NO, F_FINAL, 1, INVOICE_NO),
         field("bill_date", "2026-08-15", BILL_DATE, F_FINAL, 1, BILL_DATE),
         field("bill_total", BILL_TOTAL, rs(BILL_TOTAL), F_FINAL, 1, f"TOTAL PAYABLE: {rs(BILL_TOTAL)}"),
+        # the bill and discharge summary print the policy/member IDs too -> cross-document check (V3)
+        field("policy_number", POLICY_NO, POLICY_NO, F_FINAL, 1, POLICY_NO),
+        field("member_id", MEMBER_ID, MEMBER_ID, F_FINAL, 1, MEMBER_ID),
+        field("policy_number", POLICY_NO, POLICY_NO, F_DISCH, 1, POLICY_NO),
+        field("member_id", MEMBER_ID, MEMBER_ID, F_DISCH, 1, MEMBER_ID),
+        # the reprinted copy carries the same invoice number -> duplicate detection (V1)
+        field("bill_number", INVOICE_NO, INVOICE_NO, F_COPY, 1, INVOICE_NO),
+        field("bill_date", "2026-08-15", BILL_DATE, F_COPY, 1, BILL_DATE),
+        field("bill_total", BILL_TOTAL, rs(BILL_TOTAL), F_COPY, 1, f"TOTAL PAYABLE: {rs(BILL_TOTAL)}"),
+        field("patient_name", PATIENT, PATIENT, F_COPY, 1, PATIENT),
+        field("hospital_name", HOSPITAL, HOSPITAL, F_COPY, 1, HOSPITAL),
+        # the itemised bill shares the invoice number with the final bill; that must NOT be flagged
+        field("bill_number", INVOICE_NO, INVOICE_NO, F_ITEM, 1, INVOICE_NO),
         field("admission_date", "2026-08-12", ADMISSION, F_DISCH, 1, ADMISSION),
         field("discharge_date", "2026-08-15", DISCHARGE, F_DISCH, 1, DISCHARGE),
         field("diagnosis", DIAGNOSIS, DIAGNOSIS, F_DISCH, 1, f"Diagnosis: {DIAGNOSIS}"),
@@ -756,6 +769,17 @@ def build_results_fixture(exp: dict) -> dict:
     }
 
 
+def make_upload_zip(exp: dict, path: Path) -> None:
+    """One zip with the 6 upload files (NOT the held-back prescription), deterministic bytes."""
+    import zipfile
+
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as z:
+        for item in sorted(exp["upload_set"], key=lambda i: i["file"]):
+            info = zipfile.ZipInfo(f"claim_b/{item['file']}", date_time=(1980, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            z.writestr(info, (ROOT / item["file"]).read_bytes())
+
+
 def main() -> int:
     make_policy(ROOT / F_POLICY)
     make_final_bill(ROOT / F_FINAL)
@@ -770,6 +794,7 @@ def main() -> int:
     out = EXPECTED_DIR / "claim_b.json"
     out.write_text(json.dumps(exp, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
+    make_upload_zip(exp, ROOT / "claim_b_upload.zip")
     fixture = build_results_fixture(exp)
     fx_out = EXPECTED_DIR / "claim_b.results.fixture.json"
     fx_out.write_text(json.dumps(fixture, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
