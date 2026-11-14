@@ -41,6 +41,7 @@
     }
   ],
   "held_back_for_live_fix": [],
+  "scanned": [],
   "expected_fields": [
     {
       "key": "policy_number",
