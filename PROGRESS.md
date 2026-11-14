@@ -3,7 +3,7 @@
 Shared status board for **Person 1** and **Person 2**. Read this before you start work; update it with every change.
 Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, phases, handoffs H1-H9, contract). Original plan: [PLAN.md](PLAN.md).
 
-**Last updated:** 2026-11-14 by Person 1 (merged Person 2's `20b2aa8`/`e6b419c`; Person 1 work is on branch `person1-pipeline`)
+**Last updated:** 2026-11-14 by Person 1 (merged Person 2's verification engine `8dfba15` and folder/zip upload `e28637e`; Person 1 work is in `person1-pipeline`)
 
 ## How to use this file
 
@@ -28,7 +28,7 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 ### Phase 2 - Foundation
 | Task | Owner | Status | Notes |
 |---|---|---|---|
-| Contract freeze (shared schemas, TS mirror) | P1 draft | **done (draft) - P2 please review** | `backend/app/schemas/results.py` + `frontend/src/types/results.ts`. Includes P2's asks: `EvidenceRef.source`, `checks_passed`. D1-D10 still need an explicit OK from P2 (see Decisions). |
+| Contract freeze (shared schemas, TS mirror) | both | **two drafts exist, must be reconciled** | P1: `backend/app/schemas/results.py` + `frontend/src/types/results.ts` (used by the pipeline, API and UI). P2: `backend/app/schemas/contract.py` (used by the verification engine). Models differ slightly, see open item 11. D1-D10 still need an explicit OK. |
 | Feature-folder layout | P1 | **partly done** | All new code is in `backend/app/modules/*`, `backend/app/core`, `frontend/src/features/*`. Phase 1 files (`api/routes/claims.py`, `schemas/claim.py`, `services/claim_store.py`, `DocumentUpload.tsx`) were **not moved**, only extended. |
 | `claimed_amount` (+ `patient_name`, consent) on claim form/API | P1 | **done** | `POST/PATCH /claims` |
 | `langgraph` in `requirements.txt` | P1 | **done** | also `anthropic` |
@@ -52,7 +52,9 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 ### Phase 3+ - Person 2 (from the board, unchanged by P1)
 | Task | Owner | Status |
 |---|---|---|
-| Verification rules V1-V5, V7, V14 (+ V10, V11) with unit tests | P2 | todo (see how to plug in below) |
+| Verification rules V1-V5, V7, V14 with unit tests | P2 | **done** (`8dfba15`, 48 tests) | **Not yet wired into the pipeline** (open item 11). |
+| Verification rules V10 (room-rent exposure), V11 (waiting period) | P2 | todo | `PolicySummary` is now available from P1 (`ctx.policy_summary`). |
+| Upload accepts a folder or a .zip | P2 (requested by user) | **done** (`e28637e`) | Client-side unzip; merged with P1's claim form/consent/documents list. |
 | Workspace shell + tabs (Findings, Evidence viewer, Packet) | P2 | todo (`AnalysisView` accepts `extraTabs`) |
 | Report + claim packet + `claim.json` | P2 | todo (`GET /claims/{id}/report` still returns 501) |
 
@@ -97,16 +99,29 @@ Not measured: claims A and C (not made yet), handwritten/Indic documents, scanne
 
 **How the AI provider works (no API key needed):** the backend uses Claude through the logged-in Claude Code session (`claude -p`), auto-detected; set `ANTHROPIC_API_KEY` to use the Claude API instead. Calls take 10-50 s per document, so analyses take ~1 min; run once to warm the cache (`backend/.cache/`, keyed by file hash) before a demo, and use `DEMO_MODE=true` to replay without calling any model. This path is for local development and demos.
 
+**For Person 1, from Person 2** (raised 2026-11-14; numbered P2-n; status in item 11):
+P2-6. **Review `backend/app/schemas/contract.py`.** It is the plan's section 4 as Pydantic models, with I1 (a `Finding` needs evidence) and I3 (an `Action` needs `finding_ids`) enforced as validation. Changes vs the plan: `EvidenceRef.source` is `document | claim_form | checklist`; `checks_passed` is a separate list; `ExtractedField.confidence` is a float 0-1. If you already wrote different models, reconcile against this one - the fixture and 48 tests validate against it. The old `schemas/results.py` is untouched.
+P2-7. **Engine signature differs slightly from the plan:** `run_verification(fields, documents, claim)` returns `VerificationResult(findings, checks_passed, rules_run)`, not just `list[Finding]`, because the "appears consistent" list needs the passed checks. Module: `backend/app/modules/verification/`. The pipeline's `verify` node should call it.
+P2-8. **What the engine expects from `normalize` (M2):** `patient_name`, `policy_number`, `member_id`, `bill_number`, `hospital_name` as strings; dates as ISO strings (`2026-08-12`, other common formats also parse); amounts numeric (`"Rs. 85,000"` also parses); each `line_item` value a dict with an `amount`; `referenced_document` as free text such as "prescription no. RX-7781". Each field needs `evidence.document_id` matching a `DocumentInfo.id` with the right `doc_type`.
+P2-9. **Fixture regenerated:** the copy bill, bill and discharge summary now also carry policy/member IDs and invoice numbers (32 -> 42 fields) so cross-document rules have data. Run `git pull` again when committed. Fixture shape is unchanged.
+
+P2-10. **Heads-up, frontend upload changed (M1 is yours, so pull before editing it):** `frontend/src/components/DocumentUpload.tsx` now takes files, a folder (button or drag-and-drop) or a `.zip`. New file `frontend/src/lib/ingest.ts` does the work in the browser (`fflate` added to `package.json`); hidden/system files (`.DS_Store`, `__MACOSX`), non-PDF/PNG/JPG files and nested zips are skipped with a notice, zips are capped (200 entries, 200 MB total, 20 MB per file). The backend API is **unchanged**: each document is still uploaded through `POST /claims/{id}/documents`. Category guessing now falls back to the folder path. New demo file `sample_documents/claim_b_upload.zip` (the 6 upload files, without the held-back prescription).
+
+11. **Status (Person 1):** items P2-6 (reconcile the two contracts) and P2-7/8 (wire the engine into the pipeline's `verify` node) are **not done yet**: the engine currently exists but is not called by the pipeline, and `results.py` vs `contract.py` still differ. P2-9 and P2-10 acknowledged: fixture regenerated (pulled), upload merged (`DocumentUpload.tsx` now has both the claim form/consent/documents list and folder/zip upload).
+
 **Decisions still proposed, not confirmed** (see section 4 of the plan): D1 async analyze + polling (implemented), D2 `claimed_amount` on the claim form (implemented), D3 readiness rule (implemented in `plan.readiness`), D4 required-documents checklist (implemented), D5 packet wording/watermark (status string only, no PDF yet), D6 model names/keys (changed: Claude via session or `ANTHROPIC_API_KEY`), D7 feature-folder layout (new code only), D8 confidence threshold 0.75 (implemented as a badge, not a pause), D9 cache key (implemented), D10 tiers.
 
 ## Change log (newest first)
 
 | Date | Who | Change | Commit |
 |---|---|---|---|
+| 2026-11-14 | P1 | Merged `origin/main` (verification engine, folder/zip upload) into `person1-pipeline`; resolved conflicts in `DocumentUpload.tsx` (kept both sides) and this file | merge commit |
 | 2026-11-14 | P1 | Contract reconciliation with P2's asks: `EvidenceRef.source` (document / claim_form), `checks_passed`, `checklist_summary`, `documents_failed`, `VerificationResult`, `ctx.claim_form_ref`; `DELETE /claims/{id}/documents/{doc_id}` + Remove button; Claim B accuracy eval (`tests/eval_claim_b.py`): Claude 30/30, rules 13/30; fixed table-layout policy parsing; 27 backend tests pass | this branch |
 | 2026-11-14 | P1 | Claude provider: API key path and no-key path through the logged-in Claude Code session (`claude -p`), refusal handling, cache, schema validation | this branch |
 | 2026-11-14 | P1 | Built M1, M2, M4, M6, M8 (backend + frontend), consent/delete, cache + demo mode, README endpoints; 23 tests | `16e51e5` |
+| 2026-11-14 | P2 | **Upload takes a folder or a .zip:** `frontend/src/lib/ingest.ts` (in-browser unzip with `fflate`, folder picker + folder drag-and-drop, junk/unsupported/nested-zip skipping, size and entry caps, corrupt-zip handling), `DocumentUpload.tsx` updated (Choose folder / Choose .zip buttons, path shown per file, notice banner), `sample_documents/claim_b_upload.zip` + generator support. Logic tested in Node against a messy zip (6 real docs kept, 6 junk entries skipped, corrupt zip reported); lint + tsc clean. Not yet clicked through in a browser. Backend unchanged. | `e28637e` |
+| 2026-11-14 | P2 | **Verification engine** `backend/app/modules/verification/` (rules V1, V2, V3, V4, V5, V7, V14; deterministic, evidence on every finding, stored inputs); draft contract `backend/app/schemas/contract.py`; `backend/tests/test_verification.py` (48 tests incl. claim B end-to-end vs ground truth, quote-on-PDF-page check, and the demo fix sequence clearing all 3 blocking items). Fixed 2 bugs found by tests (amount parsing of "Rs. 85,000", name-variant threshold). Regenerated claim B fixture with more cross-document fields. **58 backend tests pass.** | `8dfba15` |
 | 2026-11-14 | P2 | Created this progress log | `e6b419c` |
-| 2026-11-14 | P2 | Added synthetic claim B (7 PDFs), ground truth with verified quotes, AnalysisResults fixture, generator `sample_documents/tools/generate_claim_b.py` | `20b2aa8` |
-| 2026-11-14 | P2 | Rewrote `docs/DIVISION_OF_WORK.md` | `290c25a` |
-| 2026-11-13 | both | Phase 0-1: environment, monorepo, FastAPI + Next.js skeleton, upload API/UI, 10 backend tests | `9bb20d0`, `88e3c0b`, `483f375` |
+| 2026-11-14 | P2 | Added synthetic claim B (7 PDFs), ground truth with verified quotes, AnalysisResults fixture, deterministic generator `sample_documents/tools/generate_claim_b.py`, `sample_documents/README.md` | `20b2aa8` |
+| 2026-11-14 | P2 | Rewrote `docs/DIVISION_OF_WORK.md`: feature-module split, architecture diagrams, USP guard rails, Build Guide integration (Wow set, V1-V14 rules, model routing), phases + handoffs | `290c25a` |
+| 2026-11-13 | both | Phase 0-1: environment checked, monorepo, FastAPI + Next.js skeleton, health check, upload API/UI, 10 backend tests, README, `.env.example` files | `9bb20d0`, `88e3c0b`, `483f375` |

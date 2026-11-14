@@ -1,7 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CheckCircle2, FileText, Loader2, Sparkles, Trash2, UploadCloud, XCircle } from "lucide-react";
+import {
+  CheckCircle2,
+  FileArchive,
+  FileText,
+  FolderOpen,
+  Loader2,
+  Sparkles,
+  Trash2,
+  UploadCloud,
+  XCircle,
+} from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
@@ -22,19 +32,28 @@ import {
 import type { ChecklistItem } from "@/types/results";
 import type { DocumentOut } from "@/types/claim";
 import {
+  ALLOWED_EXTENSIONS,
+  MAX_FILE_MB,
+  collectFromDrop,
+  collectFromInput,
+  type Collected,
+} from "@/lib/ingest";
+import {
   DOCUMENT_CATEGORIES,
   type ClaimType,
   type DocumentCategory,
 } from "@/types/claim";
 
-const MAX_MB = 20;
-const ALLOWED = [".pdf", ".png", ".jpg", ".jpeg"];
+const MAX_MB = MAX_FILE_MB;
+const ALLOWED = ALLOWED_EXTENSIONS;
 
 type ItemStatus = "staged" | "uploading" | "uploaded" | "rejected";
 
 interface Item {
   key: string;
   file: File;
+  /** Folder/zip path for display, e.g. "claim_b/medical/final_bill.pdf". */
+  path: string;
   category: DocumentCategory;
   status: ItemStatus;
   error?: string;
@@ -49,8 +68,8 @@ function validate(file: File): string | null {
   return null;
 }
 
-function guessCategory(name: string): DocumentCategory {
-  const n = name.toLowerCase();
+function guessFrom(text: string): DocumentCategory {
+  const n = text.toLowerCase();
   if (n.includes("policy")) return "policy";
   if (n.includes("discharge")) return "discharge_summary";
   if (n.includes("itemi")) return "itemised_bill";
@@ -59,6 +78,12 @@ function guessCategory(name: string): DocumentCategory {
   if (n.includes("report") || n.includes("lab")) return "diagnostic_report";
   if (n.includes("receipt")) return "payment_receipt";
   return "other";
+}
+
+// File name first; fall back to the folder path (e.g. a "policy/" folder) when the name says nothing.
+function guessCategory(name: string, path: string): DocumentCategory {
+  const byName = guessFrom(name);
+  return byName !== "other" ? byName : guessFrom(path);
 }
 
 export function DocumentUpload() {
@@ -102,20 +127,37 @@ export function DocumentUpload() {
     setChecklist([]);
     analysis.setResults(null);
   }
+  const [notice, setNotice] = useState<string[]>([]);
+  const folderRef = useRef<HTMLInputElement>(null);
+  const zipRef = useRef<HTMLInputElement>(null);
 
-  function addFiles(list: FileList | null) {
-    if (!list) return;
-    const added: Item[] = Array.from(list).map((file) => {
+  // Files, folders and .zip archives all end up here as a flat list of documents.
+  function addCollected(c: Collected) {
+    const added: Item[] = c.files.map(({ file, path }) => {
       const problem = validate(file);
       return {
-        key: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
+        key: `${path}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
         file,
-        category: guessCategory(file.name),
+        path,
+        category: guessCategory(file.name, path),
         status: problem ? "rejected" : "staged",
         error: problem ?? undefined,
       };
     });
     setItems((prev) => [...prev, ...added]);
+    const lines = [...c.problems];
+    if (c.skipped > 0) {
+      lines.push(
+        `Ignored ${c.skipped} hidden, system or unsupported file${c.skipped === 1 ? "" : "s"} found in the folder or zip.`,
+      );
+    }
+    if (added.length === 0 && lines.length === 0) lines.push("No documents found.");
+    setNotice(lines);
+  }
+
+  function fromInput(list: FileList | null) {
+    if (!list || list.length === 0) return;
+    void collectFromInput(list).then(addCollected);
   }
 
   const patch = (key: string, p: Partial<Item>) =>
@@ -258,26 +300,70 @@ export function DocumentUpload() {
             onDrop={(e) => {
               e.preventDefault();
               setDragging(false);
-              addFiles(e.dataTransfer.files);
+              void collectFromDrop(e.dataTransfer).then(addCollected);
             }}
             className={`flex cursor-pointer flex-col items-center gap-2 rounded-lg border-2 border-dashed p-10 text-center transition-colors ${
               dragging ? "border-primary bg-muted" : "border-border hover:bg-muted/50"
             }`}
           >
             <UploadCloud className="size-8 text-muted-foreground" aria-hidden />
-            <p className="text-sm font-medium">Drag and drop files here, or click to browse</p>
+            <p className="text-sm font-medium">Drop files, a folder or a .zip here, or click to browse</p>
             <input
               ref={inputRef}
               type="file"
               multiple
-              accept={ALLOWED.join(",")}
+              accept={[...ALLOWED, ".zip"].join(",")}
               className="hidden"
               onChange={(e) => {
-                addFiles(e.target.files);
+                fromInput(e.target.files);
                 e.target.value = "";
               }}
             />
           </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" size="sm" onClick={() => folderRef.current?.click()}>
+              <FolderOpen /> Choose folder
+            </Button>
+            <Button type="button" variant="outline" size="sm" onClick={() => zipRef.current?.click()}>
+              <FileArchive /> Choose .zip
+            </Button>
+            <span className="text-xs text-muted-foreground">
+              Zips and folders are opened in your browser; only the PDF/PNG/JPG documents inside are uploaded.
+            </span>
+            {/* webkitdirectory lets the user pick a whole folder (supported by all major browsers) */}
+            <input
+              ref={folderRef}
+              type="file"
+              className="hidden"
+              onChange={(e) => {
+                fromInput(e.target.files);
+                e.target.value = "";
+              }}
+              {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
+            />
+            <input
+              ref={zipRef}
+              type="file"
+              accept=".zip,application/zip"
+              className="hidden"
+              onChange={(e) => {
+                fromInput(e.target.files);
+                e.target.value = "";
+              }}
+            />
+          </div>
+
+          {notice.length > 0 && (
+            <Alert>
+              <AlertTitle>Heads up</AlertTitle>
+              <AlertDescription>
+                {notice.map((line) => (
+                  <p key={line}>{line}</p>
+                ))}
+              </AlertDescription>
+            </Alert>
+          )}
 
           {items.length > 0 && (
             <ul className="divide-y rounded-lg border">
@@ -286,6 +372,9 @@ export function DocumentUpload() {
                   <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{item.file.name}</p>
+                    {item.path !== item.file.name && (
+                      <p className="truncate text-xs text-muted-foreground">{item.path}</p>
+                    )}
                     <p className="text-xs text-muted-foreground">
                       {(item.file.size / 1024).toFixed(0)} KB
                       {item.error && <span className="ml-2 text-destructive">{item.error}</span>}

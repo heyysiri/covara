@@ -17,6 +17,8 @@ Claim form input: reimbursement, **claimed amount 95,000**, patient Ravi Kumar S
 | `medical/claim_b_discharge_summary.pdf` (refers to prescription RX-7781) | discharge summary |
 | `medical/claim_b_payment_receipt.pdf` (name written "Ravi K Sharma") | payment receipt |
 
+**Shortcut:** `claim_b_upload.zip` contains exactly these 6 files. Drop the zip (or the `policy/` and `medical/` folders) on the upload page instead of picking files one by one. The held-back prescription is deliberately not in the zip.
+
 **Held back for the live fix:** `medical/_held_back/claim_b_prescription_RX-7781.pdf` - upload it during the demo.
 
 **Planted findings** (ground truth in `expected_results/claim_b.json`)
