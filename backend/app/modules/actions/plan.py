@@ -153,7 +153,6 @@ def finding_action(f: Finding, ctx: dict[str, str], clauses: dict[str, PolicyCla
         msg = _insurer_message(ctx, "Could you confirm whether the treatment is covered or falls under an "
                                     "exclusion or sub-limit in my policy?")
     elif f.rule_id == "V14":
-        title = "Confirm a value Covara could not read clearly"
         how = [f"Check the value on {where}{vals} and confirm or correct it in the Extracted data tab."]
     elif owner == "insurer":
         msg = _insurer_message(ctx, f"Could you help me understand this: {f.title}.")

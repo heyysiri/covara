@@ -3,7 +3,7 @@
 Shared status board for **Person 1** and **Person 2**. Read this before you start work; update it with every change.
 Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, phases, handoffs H1-H9, contract). Original plan: [PLAN.md](PLAN.md).
 
-**Last updated:** 2026-11-14 by Person 1 (verification engine now wired into the pipeline; all merged to `main`)
+**Last updated:** 2026-11-14 by Person 1 (chat screen removed; Sarvam OCR, English + Hindi, Listen button, Paytm-style theme)
 
 ## How to use this file
 
@@ -15,7 +15,7 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 
 ## Current phase
 
-**Person 1 modules are built and Person 2's verification engine is wired in.** The full claim B demo path works end to end with Claude: upload -> analyse -> 3 blocking findings + 1 to review -> fix sequence -> Re-check -> "Prepared for submission" (measured below). Still missing for the demo: V10 (room-rent exposure) and V11 (waiting period) rules, the Findings/Evidence/Packet tabs, and the report PDF (all Person 2). Next joint milestone: G3 (evidence viewer + policy clause on a finding).
+**Person 1 modules are built, Person 2's verification engine is wired in, and the site is in English and Hindi with Sarvam scan reading and a Listen button, in a Paytm-style navy and cyan theme. A chat screen was built and then removed at the team's request (positioning: Covara is a guided evidence-linked check, not a chatbot).** The full claim B demo path works end to end with Claude: upload -> analyse -> 3 blocking findings + 1 to review -> fix sequence -> Re-check -> "Prepared for submission" (measured below). Still missing for the demo: V10 (room-rent exposure) and V11 (waiting period) rules, the Findings/Evidence/Packet tabs, and the report PDF (all Person 2). Next joint milestone: G3 (evidence viewer + policy clause on a finding).
 
 ## Task board
 
@@ -47,7 +47,11 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 | W1 safety net (cache, demo mode) | done | `DEMO_MODE=true` replays cache only |
 | W4 re-check loop | **done** | Edit claimed amount, remove the duplicate, upload the prescription, Re-check: findings clear and the packet status flips. Measured on claim B (below). Backend only; the packet PDF/watermark is P2's. |
 | W8 review gate as a LangGraph `interrupt()` | **not done** | Implemented as badge + confirm/edit + Re-check instead (no pause/resume). |
-| W5 Sarvam Vision (Indic/handwritten) | **not done** | Key present in env but no integration yet. |
+| W5 Sarvam Vision (Indic scans/photos) | **done** | Image-only documents and scans are read by Sarvam Vision (`app/core/sarvam.py`), cached by file hash, then Claude structures the OCR text; quotes verified against it. Tested on printed-style Hindi scans only; **real handwriting is untested**. |
+| Listen (Sarvam Bulbul text-to-speech) | **done, not heard by a person** | Button in the results banner reads the translated summary aloud (`GET /claims/{id}/summary`, `POST /speech/tts`). Speech-to-text exists in `app/core/sarvam.py` (round-trip tested) but has no UI after the chat was removed. |
+| Whole-site translation (W11) | **done (machine-translated), English + Hindi only** | Landing and detailed view. Static text from `frontend/src/i18n/translations.json`; backend text translated on demand with amounts/dates/IDs protected. **Needs native-speaker review.** Other languages were generated then dropped to save API calls. |
+| Paytm-style theme + responsive | **done** | Navy (#002E6E) and cyan (#00BAF2) palette (approximations, not official brand values), gradient hero and header band, pill CTAs. Checked for horizontal overflow at 360, 390, 768 and 1280 px in headless Chrome; not tried on real phones. |
+| Hindi demo zip | **done** | `sample_documents/hindi_demo_upload.zip` (Hindi scanned bill + prescription + 4 English docs), generator in `sample_documents/tools/generate_hindi_demo.py`. |
 
 ### Phase 3+ - Person 2 (from the board, unchanged by P1)
 | Task | Owner | Status |
@@ -75,6 +79,21 @@ Run: `cd backend && .venv/bin/python -m tests.eval_claim_b` (add `--rules` for o
 
 Not covered: B-F4 (V10 room-rent exposure, rule not written yet), V11, claims A and C (not made yet), handwritten/Indic documents, scanned images. The no-AI path is a fallback only and is not demo quality. Model: Claude through the Claude Code session; speed will differ on the real API.
 
+### Hindi demo claim (Sarvam OCR + Claude, documents uploaded with no category)
+
+Run: `cd backend && .venv/bin/python -m tests.eval_hindi_demo`.
+
+| Check | Result |
+|---|---|
+| All 6 document types detected automatically (including the Hindi scans) | 6 / 6 |
+| Hindi bill and prescription read by Sarvam | yes |
+| Hindi bill: total 85,000, invoice number, admission date (ISO), patient name transliterated to English, quote has a highlight box | all correct |
+| V4 amount mismatch found (blocking), V2 name variant found, prescription not reported missing, no duplicate false alarm | all as expected |
+| After correcting the amount: "Prepared for submission" | yes |
+| Total | **18 / 18 checks** (~1 min, 17 model calls) |
+
+Not covered: real handwriting, other Indian languages' scans, poor-quality photos, more than a few pages. OCR highlight boxes are approximate (table rows are spread evenly over the block).
+
 ## Handoffs
 
 | # | Handoff | From -> To | Status |
@@ -90,6 +109,13 @@ Not covered: B-F4 (V10 room-rent exposure, rule not written yet), V11, claims A 
 | H9 | Findings with evidence | P2 -> P1 | **done** (`8dfba15`, wired by P1): V1-V5, V7, V14 reach the plan and results |
 
 ## Open items / heads-up
+
+**For Person 2 (raised 2026-11-14 by Person 1) - frontend changes you must know before editing:**
+- **All UI text now goes through `t()`.** Existing screens were converted. In new UI write the English sentence as `t("...")` (double-quoted literal on one line; variables as `t("{n} done", { n })`) with `const { t } = useI18n()` from `@/i18n`. Text coming from the backend uses `useLocalized([...])`. Then run `cd backend && .venv/bin/python -m scripts.gen_i18n` (resumable; translates only the missing Hindi sentences) to add them. Do not translate extracted values, file names, quotes or ids.
+- **Pull before editing** `DocumentUpload.tsx`, `AnalysisView.tsx`, `ActionPlan.tsx`, `PolicyPanel.tsx`, `ExtractedData.tsx`, landing and claim pages: all were touched. `/claim` page markup now lives in `features/pipeline/ClaimShell.tsx`.
+- **The demo screen is `/claim`** (landing page "Start a claim"). Your Findings / Evidence / Packet screens go in `AnalysisView` (`extraTabs`). Findings already show in the action plan with page links.
+- **Backend:** `GET /claims/{id}/summary`, `POST /speech/tts`, `/translate`, `/speech/stt` (see README). Your engine needs no change. Scans are now OCR'd by Sarvam, so `ExtractedField.evidence.bbox` can be an approximate OCR block box.
+- While `gen_i18n` runs it rewrites `translations.json`, which hot-reloads the dev page. For a demo use `npm run build && npm start`.
 
 **For Person 2 (raised 2026-11-14 by Person 1) - please read:**
 1. **Your engine is already plugged in** through `pipeline/verify_adapter.py` (no action needed). Optional override: a `verification/service.py` with `run_verification(ctx: VerificationContext)` takes precedence over the adapter. Return a `VerificationResult(findings=[...], checks_passed=[...])` (from `app/modules/pipeline/context.py`); a plain `list[Finding]` or a `(findings, checks_passed)` tuple also works. `Finding` rejects empty `evidence` (I1).
@@ -121,6 +147,7 @@ P2-10. **Heads-up, frontend upload changed (M1 is yours, so pull before editing 
 
 | Date | Who | Change | Commit |
 |---|---|---|---|
+| 2026-11-14 | P1 | **Sarvam OCR, English + Hindi site, Listen button, Paytm-style UI.** New `app/core/sarvam.py` (OCR with block boxes cached by file hash, translation that protects amounts/dates/IDs with rate-limit retry, STT, TTS), `modules/language` (summary, `/speech/*`, `/translate`), `frontend/src/i18n` (t, useLocalized, language switcher, Hindi dictionary), existing screens converted to `t()`, Listen button, navy/cyan theme with header band and pill CTAs, documents classified automatically, quote matching accepts the value when the label differs (fewer false "please confirm"), Hindi demo zip + generator + `tests/eval_hindi_demo.py` (18/18), claim B eval 40/40, 85 backend tests, headless-browser check of landing and detailed view (English and Hindi) and overflow at 4 widths. A chat screen with voice input was built and then removed at the team's request. Not done: a real microphone test, native-speaker review of Hindi | this commit |
 | 2026-11-14 | P1 | **Wired the verification engine into the pipeline** (`verify_adapter.py`): V1-V5, V7, V14 findings now reach clause linking, the action plan and the packet status; `EvidenceRef.source=checklist`; packet blocking count no longer double-counts a V7 finding and its upload action; `referenced_document` keeps the wording as written; `member_id` extracted from discharge summaries. Claim B eval extended with findings and the demo fix sequence: Claude 40/40 fields, 4/4 findings, packet goes INCOMPLETE (3 blocking) -> Prepared for submission; rules-only 22/40. 76 backend tests pass | this commit |
 | 2026-11-14 | P1 | Merged `origin/main` (verification engine, folder/zip upload) into `person1-pipeline`; resolved conflicts in `DocumentUpload.tsx` (kept both sides) and this file | merge commit |
 | 2026-11-14 | P1 | Contract reconciliation with P2's asks: `EvidenceRef.source` (document / claim_form), `checks_passed`, `checklist_summary`, `documents_failed`, `VerificationResult`, `ctx.claim_form_ref`; `DELETE /claims/{id}/documents/{doc_id}` + Remove button; Claim B accuracy eval (`tests/eval_claim_b.py`): Claude 30/30, rules 13/30; fixed table-layout policy parsing; 27 backend tests pass | this branch |

@@ -9,16 +9,12 @@ import { ActionPlan } from "@/features/actions/ActionPlan";
 import { ExtractedData, needsReview } from "@/features/extraction/ExtractedData";
 import { Checklist } from "@/features/intake/Checklist";
 import { PolicyPanel } from "@/features/policy/PolicyPanel";
+import { ListenButton } from "@/features/voice/ListenButton";
+import { useI18n, useLocalized } from "@/i18n";
 import type { FieldEdit } from "@/lib/api";
 import type { AnalysisResults } from "@/types/results";
 
 import { AnalysisProgress } from "./AnalysisProgress";
-
-const READINESS = {
-  ready: { label: "Ready to submit", icon: CheckCircle2, cls: "border-emerald-600/40 bg-emerald-600/5 text-emerald-700 dark:text-emerald-400" },
-  needs_attention: { label: "Needs attention", icon: AlertTriangle, cls: "border-amber-500/50 bg-amber-500/5 text-amber-700 dark:text-amber-400" },
-  incomplete: { label: "Incomplete", icon: XCircle, cls: "border-destructive/40 bg-destructive/5 text-destructive" },
-} as const;
 
 export interface ExtraTab {
   id: string;
@@ -45,16 +41,30 @@ export function AnalysisView({
   onResults: (r: AnalysisResults) => void;
   extraTabs?: ExtraTab[];
 }) {
+  const { t } = useI18n();
+  const READINESS = {
+    ready: { label: t("Ready to submit"), icon: CheckCircle2, cls: "border-emerald-600/40 bg-emerald-600/5 text-emerald-700 dark:text-emerald-400" },
+    needs_attention: { label: t("Needs attention"), icon: AlertTriangle, cls: "border-amber-500/50 bg-amber-500/5 text-amber-700 dark:text-amber-400" },
+    incomplete: { label: t("Incomplete"), icon: XCircle, cls: "border-destructive/40 bg-destructive/5 text-destructive" },
+  } as const;
+  const loc = useLocalized([
+    results.readiness_explanation,
+    results.error ?? "",
+    results.packet_status ?? "",
+    results.disclaimer,
+    ...results.warnings,
+  ]);
+  const [explanationL, errorL, packetL, disclaimerL, ...warningsL] = loc;
   const running = results.status === "processing";
   const hasData = results.documents.length > 0;
   const reviewCount = results.fields.filter(needsReview).length;
   const openActions = results.action_plan.filter((a) => !a.done).length;
   const tabs = [
-    { id: "actions", label: `Action plan${openActions ? ` (${openActions})` : ""}` },
-    { id: "extracted", label: `Extracted data${reviewCount ? ` · ${reviewCount} to confirm` : ""}` },
-    { id: "policy", label: "Policy" },
-    { id: "checklist", label: "Checklist" },
-    ...extraTabs.map((t) => ({ id: t.id, label: t.label })),
+    { id: "actions", label: `${t("Action plan")}${openActions ? ` (${openActions})` : ""}` },
+    { id: "extracted", label: `${t("Extracted data")}${reviewCount ? ` · ${t("{n} to confirm", { n: reviewCount })}` : ""}` },
+    { id: "policy", label: t("Policy") },
+    { id: "checklist", label: t("Checklist") },
+    ...extraTabs.map((x) => ({ id: x.id, label: x.label })),
   ];
   const [tab, setTab] = useState("actions");
   const r = results.readiness_status ? READINESS[results.readiness_status] : null;
@@ -66,8 +76,8 @@ export function AnalysisView({
 
       {results.status === "failed" && (
         <Alert variant="destructive">
-          <AlertTitle>Analysis failed</AlertTitle>
-          <AlertDescription>{results.error}</AlertDescription>
+          <AlertTitle>{t("Analysis failed")}</AlertTitle>
+          <AlertDescription>{errorL}</AlertDescription>
         </Alert>
       )}
 
@@ -76,22 +86,23 @@ export function AnalysisView({
           <r.icon className="mt-0.5 size-5 shrink-0" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="font-semibold">{r.label}</p>
-            <p className="text-sm text-foreground/80">{results.readiness_explanation}</p>
+            <p className="text-sm text-foreground/80">{explanationL}</p>
             {results.packet_status && (
-              <p className="mt-1 text-xs font-medium text-foreground/70">Claim packet: {results.packet_status}</p>
+              <p className="mt-1 text-xs font-medium text-foreground/70">{t("Claim packet: {status}", { status: packetL })}</p>
             )}
           </div>
+          <ListenButton claimId={claimId} disabled={running} />
           <Button variant="outline" size="sm" onClick={onRecheck} disabled={running}>
-            {running ? <Loader2 className="animate-spin" /> : <RefreshCw />} Re-check
+            {running ? <Loader2 className="animate-spin" /> : <RefreshCw />} {t("Re-check")}
           </Button>
         </div>
       )}
 
       {results.warnings.length > 0 && (
         <ul className="space-y-1">
-          {results.warnings.map((w) => (
+          {results.warnings.map((w, i) => (
             <li key={w} className="flex items-start gap-2 text-xs text-muted-foreground">
-              <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden /> {w}
+              <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden /> {warningsL[i]}
             </li>
           ))}
         </ul>
@@ -100,17 +111,17 @@ export function AnalysisView({
       {hasData && (
         <>
           <div role="tablist" className="flex flex-wrap gap-1 border-b">
-            {tabs.map((t) => (
+            {tabs.map((x) => (
               <button
-                key={t.id}
+                key={x.id}
                 role="tab"
-                aria-selected={tab === t.id}
-                onClick={() => setTab(t.id)}
+                aria-selected={tab === x.id}
+                onClick={() => setTab(x.id)}
                 className={`-mb-px border-b-2 px-3 py-2 text-sm ${
-                  tab === t.id ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
+                  tab === x.id ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
                 }`}
               >
-                {t.label}
+                {x.label}
               </button>
             ))}
           </div>
@@ -121,13 +132,15 @@ export function AnalysisView({
             {tab === "extracted" && <ExtractedData claimId={claimId} results={results} onReview={onReview} busy={running} />}
             {tab === "policy" && <PolicyPanel claimId={claimId} results={results} />}
             {tab === "checklist" && <Checklist items={results.checklist} />}
-            {extraTabs.find((t) => t.id === tab)?.render(results)}
+            {extraTabs.find((x) => x.id === tab)?.render(results)}
           </div>
           <p className="text-xs text-muted-foreground">
             {aiCalls.length > 0
-              ? `Read with ${results.providers_used.join(", ")} (${aiCalls.length} model call${aiCalls.length > 1 ? "s" : ""}, ${aiCalls.filter((c) => c.cached).length} from cache). `
-              : "Read with Covara's rule-based extractor (no AI provider configured). "}
-            Every value links to its source page. {results.disclaimer}
+              ? aiCalls.length === 1
+                ? t("Read with {providers} (1 model call, {cached} from cache).", { providers: results.providers_used.join(", "), cached: aiCalls.filter((c) => c.cached).length })
+                : t("Read with {providers} ({n} model calls, {cached} from cache).", { providers: results.providers_used.join(", "), n: aiCalls.length, cached: aiCalls.filter((c) => c.cached).length })
+              : t("Read with Covara's rule-based extractor (no AI provider configured).")}{" "}
+            {t("Every value links to its source page.")} {disclaimerL}
           </p>
         </>
       )}

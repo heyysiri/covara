@@ -117,17 +117,30 @@ cd frontend && npm run lint && npm run build
 | GET | `/claims/{id}/policy` | Policy summary + clause chunks with pages. |
 | GET/POST | `/claims/{id}/review` | Low-confidence critical fields / confirm or correct values and re-check. |
 | GET | `/claims/{id}/actions` · PATCH `/claims/{id}/actions/{action_id}` | Action plan / tick an action done. |
+| GET | `/claims/{id}/summary?lang=` | Plain-language summary of the analysis in the chosen language (also what Listen reads aloud). |
+| POST | `/speech/tts` | `{text, lang}` -> spoken reply (mp3). Needs `SARVAM_API_KEY`. |
+| POST | `/translate` | `{texts, lang}` -> translations of backend text; numbers/dates/IDs preserved. |
+| GET | `/speech/languages` | Supported languages and whether Sarvam is configured. |
 | GET | `/claims/{id}/report` | `501`, Person 2 (M7). |
 
 Upload rules: PDF / PNG / JPG only, max `MAX_UPLOAD_MB` (default 20) per file. The file's leading bytes must match its extension. Files are stored on disk at `backend/uploads/<claim_id>/<document_id>.<ext>` under server-generated names. The original filename is kept as sanitized metadata only. Claims are held **in memory**, so restarting the backend clears them.
 
+## Languages, voice and Hindi scans (Sarvam)
+
+- **Scans and photos** (Hindi or any Indian language) are read by Sarvam Vision first, then Claude structures the text; quotes are checked against the OCR text and shown with an approximate highlight box. Documents are classified automatically when uploaded with category "other".
+- **Languages**: English and Hindi, via the language selector on every page. Static UI text comes from `frontend/src/i18n/translations.json` (generated once with Sarvam by `backend/scripts/gen_i18n.py`; machine translation, have a native speaker review it; the script is resumable and only translates missing sentences). Text from the backend (findings, actions, explanations) is translated on demand; **amounts, dates, IDs and file names are protected and never altered**: if a protected value would be lost, that sentence stays English. To add a language: add it to `LANGUAGES` in `app/core/sarvam.py` and `frontend/src/i18n/index.tsx`, then run the script (it makes many Sarvam calls).
+- **Listen**: the results banner has a Listen button that reads the claim summary aloud in the selected language (Sarvam Bulbul). It appears only when `SARVAM_API_KEY` is set.
+- Rate limits: Sarvam throttles translation; bulk generation is paced. For demos use `npm run build && npm start` (the dev server hot-reloads when the dictionary file changes).
+
+**Hindi demo claim** (synthetic): `sample_documents/hindi_demo_upload.zip` holds a Hindi scanned bill, a Hindi scanned prescription and four English documents. Enter 95000 as the claimed amount; expect one blocking issue (bill 85,000 vs claimed 95,000) and one name variant to review; correcting the amount to 85000 and pressing Re-check clears the blocker. Regenerate with `backend/.venv/bin/python sample_documents/tools/generate_hindi_demo.py`; check with `cd backend && .venv/bin/python -m tests.eval_hindi_demo`. The scans are printed-style, **not real handwriting**.
+
 ## Environment variables
 
-`backend/.env` (see `backend/.env.example`): `APP_ENV`, `FRONTEND_ORIGIN` (comma-separated CORS origins), `MAX_UPLOAD_MB`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `SARVAM_API_KEY`.
+`backend/.env` (see `backend/.env.example`): `APP_ENV`, `FRONTEND_ORIGIN` (comma-separated CORS origins), `MAX_UPLOAD_MB`, `GEMINI_API_KEY`, `GEMINI_MODEL`, `GROQ_API_KEY`, `GROQ_MODEL`, `SARVAM_API_KEY` (scan OCR, translation, voice).
 
 `frontend/.env.local` (see `frontend/.env.example`): `NEXT_PUBLIC_API_URL`. **Never put secrets in `NEXT_PUBLIC_` variables.**
 
-`ANTHROPIC_MODEL` defaults to `claude-opus-5-5` (API key path only; the Claude Code path uses your session's model, or `CLAUDE_CLI_MODEL`). `GEMINI_MODEL` defaults to `gemini-2.5-flash` and `GROQ_MODEL` to `llama-3.1-8b-instant` if left empty (check current model IDs). `DEMO_MODE=true` replays cached model outputs only (no live calls). Model outputs are cached in `backend/.cache/` by file hash.
+`ANTHROPIC_MODEL` defaults to `claude-sonnet-5-5` (API key path only; the Claude Code path uses your session's model, or `CLAUDE_CLI_MODEL`). `GEMINI_MODEL` defaults to `gemini-2.5-flash` and `GROQ_MODEL` to `llama-3.1-8b-instant` if left empty (check current model IDs). `DEMO_MODE=true` replays cached model outputs only (no live calls). Model outputs are cached in `backend/.cache/` by file hash.
 
 AI providers are optional. The app boots without keys, and `backend/app/services/providers.py` lazily creates Gemini, Groq and Sarvam clients once a key is set.
 

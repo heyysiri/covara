@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     # AI providers. All optional: the app starts without any of them.
     # Claude (Anthropic) is the primary provider. Key from https://platform.claude.com
     anthropic_api_key: str = ""
-    anthropic_model: str = ""  # defaults to claude-opus-5-5
+    anthropic_model: str = ""  # defaults to claude-sonnet-5-5
     # No API key? Covara can use your logged-in Claude Code session through its headless mode
     # (`claude -p`). Path is auto-detected (PATH, then the VS Code extension's bundled binary).
     claude_use_cli: bool = True

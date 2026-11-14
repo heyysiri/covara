@@ -23,7 +23,8 @@ from app.modules.actions.plan import build_plan, readiness, summary_is_empty
 from app.modules.extraction import normalize as nz
 from app.modules.extraction.classify import classify
 from app.modules.extraction.extract import extract
-from app.modules.extraction.ingest import IngestedDoc, ingest
+from app.core import sarvam
+from app.modules.extraction.ingest import IngestedDoc, apply_ocr, ingest
 from app.modules.intake.checklist import build_checklist
 from app.modules.pipeline.context import VerificationContext, VerificationResult
 from app.modules.policy.index import build_clauses
@@ -127,6 +128,13 @@ def node_ingest(state: ClaimState) -> dict:
                             doc_type=d.category.value)
         try:
             ing = ingest(d.id, d.original_filename, claim_store.document_path(claim.id, d), d.content_type, d.sha256)
+            if not ing.has_text_layer and sarvam.available():
+                try:  # scans / photos / Indic documents: Sarvam Vision reads them first
+                    apply_ocr(ing, sarvam.ocr_document(ing.path, ing.content_type, ing.filename, ing.sha256,
+                                                       state["calls"]))
+                except sarvam.SarvamError:
+                    warnings.append(f"{d.original_filename}: Sarvam could not read this scan, "
+                                    "so it will be read by the AI model directly.")
             dr.pages, dr.has_text_layer = len(ing.pages), ing.has_text_layer
             docs.append(ing)
         except Exception as e:
@@ -183,7 +191,8 @@ def node_extract(state: ClaimState) -> dict:
                 n = counts.get(f.key, 0)
                 counts[f.key] = n + 1
                 f.id = f"{doc.document_id[:8]}-{f.key}-{n}"
-            dr.status, dr.extraction_method = "processed", method
+            dr.status = "processed"
+            dr.extraction_method = f"sarvam+{method}" if doc.ocr_source else method
             if method == "none":
                 warnings.append(f"{dr.filename}: no text layer and no vision model configured, so nothing "
                                 "could be extracted. Add ANTHROPIC_API_KEY to read scans and photos.")

@@ -5,17 +5,12 @@ import { Building2, Check, Copy, Shield, Stethoscope, User } from "lucide-react"
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useI18n, useLocalized } from "@/i18n";
 import { setActionDone } from "@/lib/api";
 import type { Action, AnalysisResults, Owner } from "@/types/results";
 
-const OWNER: Record<Owner, { label: string; icon: typeof User }> = {
-  user: { label: "You", icon: User },
-  hospital: { label: "Hospital", icon: Building2 },
-  doctor: { label: "Doctor", icon: Stethoscope },
-  insurer: { label: "Insurer", icon: Shield },
-};
-
 function CopyButton({ text }: { text: string }) {
+  const { t } = useI18n();
   const [copied, setCopied] = useState(false);
   return (
     <Button
@@ -31,7 +26,7 @@ function CopyButton({ text }: { text: string }) {
         }
       }}
     >
-      {copied ? <Check /> : <Copy />} {copied ? "Copied" : "Copy message"}
+      {copied ? <Check /> : <Copy />} {copied ? t("Copied") : t("Copy message")}
     </Button>
   );
 }
@@ -45,10 +40,37 @@ export function ActionPlan({
   results: AnalysisResults;
   onChange: (actions: Action[]) => void;
 }) {
+  const { t } = useI18n();
+  const OWNER: Record<Owner, { label: string; icon: typeof User }> = {
+    user: { label: t("You"), icon: User },
+    hospital: { label: t("Hospital"), icon: Building2 },
+    doctor: { label: t("Doctor"), icon: Stethoscope },
+    insurer: { label: t("Insurer"), icon: Shield },
+  };
   const actions = results.action_plan;
   const clauses = new Map(results.clauses.map((c) => [c.id, c]));
   const findings = new Map(results.findings.map((f) => [f.id, f]));
   const open = actions.filter((a) => !a.done).length;
+
+  // Backend text arrives in English: translate it for display (amounts, dates and IDs stay unchanged).
+  const loc = useLocalized([
+    ...actions.flatMap((a) => [a.title, a.why, a.draft_message ?? "", ...a.how]),
+    ...results.checks_passed,
+    ...results.findings.map((f) => f.title),
+  ]);
+  const starts = actions.reduce<number[]>((acc, a, i) => {
+    acc.push(i === 0 ? 0 : acc[i - 1] + 3 + actions[i - 1].how.length);
+    return acc;
+  }, []);
+  const actionsEnd = actions.reduce((n, a) => n + 3 + a.how.length, 0);
+  const L = actions.map((a, i) => {
+    const seg = loc.slice(starts[i], starts[i] + 3 + a.how.length);
+    return { title: seg[0], why: seg[1], draft: a.draft_message ? seg[2] : null, how: seg.slice(3) };
+  });
+  const checksL = loc.slice(actionsEnd, actionsEnd + results.checks_passed.length);
+  const findingTitleL = new Map(
+    results.findings.map((f, i) => [f.id, loc[actionsEnd + results.checks_passed.length + i]]),
+  );
 
   async function toggle(a: Action) {
     const updated = await setActionDone(claimId, a.id, !a.done);
@@ -58,11 +80,11 @@ export function ActionPlan({
   const consistent = results.checks_passed.length > 0 && (
     <div className="rounded-lg border p-3">
       <p className="mb-1 flex items-center gap-1.5 text-sm font-medium">
-        <Check className="size-4 text-emerald-600" aria-hidden /> Appears consistent
+        <Check className="size-4 text-emerald-600" aria-hidden /> {t("Appears consistent")}
       </p>
       <ul className="list-disc space-y-0.5 pl-5 text-sm text-muted-foreground">
-        {results.checks_passed.map((c) => (
-          <li key={c}>{c}</li>
+        {results.checks_passed.map((c, i) => (
+          <li key={c}>{checksL[i]}</li>
         ))}
       </ul>
     </div>
@@ -71,7 +93,7 @@ export function ActionPlan({
   if (actions.length === 0)
     return (
       <div className="space-y-3">
-        <p className="text-sm text-muted-foreground">No actions needed. Your documents look complete and consistent.</p>
+        <p className="text-sm text-muted-foreground">{t("No actions needed. Your documents look complete and consistent.")}</p>
         {consistent}
       </div>
     );
@@ -79,11 +101,12 @@ export function ActionPlan({
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        {open} of {actions.length} actions open. Blocking items are listed first.
+        {t("{open} of {total} actions open. Blocking items are listed first.", { open, total: actions.length })}
       </p>
       <ul className="space-y-2">
-        {actions.map((a) => {
+        {actions.map((a, ai) => {
           const O = OWNER[a.owner];
+          const al = L[ai];
           return (
             <li key={a.id} className={`rounded-lg border p-3 ${a.done ? "opacity-60" : ""}`}>
               <div className="flex items-start gap-3">
@@ -92,20 +115,20 @@ export function ActionPlan({
                   checked={a.done}
                   onChange={() => toggle(a)}
                   className="mt-1 size-4 accent-primary"
-                  aria-label={`Mark "${a.title}" as done`}
+                  aria-label={t('Mark "{title}" as done', { title: al.title })}
                 />
                 <div className="min-w-0 flex-1 space-y-1.5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className={`text-sm font-medium ${a.done ? "line-through" : ""}`}>{a.title}</p>
-                    {a.blocking && <Badge variant="destructive">Blocking</Badge>}
+                    <p className={`text-sm font-medium ${a.done ? "line-through" : ""}`}>{al.title}</p>
+                    {a.blocking && <Badge variant="destructive">{t("Blocking")}</Badge>}
                     <Badge variant="outline">
                       <O.icon className="mr-1 size-3" aria-hidden /> {O.label}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground">{a.why}</p>
+                  <p className="text-sm text-muted-foreground">{al.why}</p>
                   {a.how.length > 0 && (
                     <ol className="list-decimal space-y-0.5 pl-5 text-sm">
-                      {a.how.map((h, i) => (
+                      {al.how.map((h, i) => (
                         <li key={i}>{h}</li>
                       ))}
                     </ol>
@@ -113,24 +136,24 @@ export function ActionPlan({
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     {a.finding_ids.map((id) => findings.get(id)).filter(Boolean).map((f) => (
                       <span key={f!.id}>
-                        Finding: {f!.title} ({f!.rule_id})
+                        {t("Finding: {title} ({rule})", { title: findingTitleL.get(f!.id) ?? f!.title, rule: f!.rule_id })}
                       </span>
                     ))}
                     {a.clause_ids.map((id) => clauses.get(id)).filter(Boolean).map((c) => (
                       <span key={c!.id}>
-                        Policy clause {c!.clause_ref} · {c!.filename} p.{c!.page_number}
+                        {t("Policy clause {ref} · {file} p.{page}", { ref: c!.clause_ref, file: c!.filename, page: c!.page_number })}
                       </span>
                     ))}
-                    {a.checklist_category && <span>From the document checklist</span>}
+                    {a.checklist_category && <span>{t("From the document checklist")}</span>}
                   </div>
                   {a.draft_message && (
                     <details className="rounded-md bg-muted/50 p-2 text-sm">
                       <summary className="cursor-pointer text-xs font-medium">
-                        Ready-to-send message to {O.label.toLowerCase()}
+                        {t("Ready-to-send message to {who}", { who: O.label.toLowerCase() })}
                       </summary>
-                      <pre className="mt-2 whitespace-pre-wrap font-sans text-sm">{a.draft_message}</pre>
+                      <pre className="mt-2 whitespace-pre-wrap font-sans text-sm">{al.draft ?? a.draft_message}</pre>
                       <div className="mt-2">
-                        <CopyButton text={a.draft_message} />
+                        <CopyButton text={al.draft ?? a.draft_message} />
                       </div>
                     </details>
                   )}

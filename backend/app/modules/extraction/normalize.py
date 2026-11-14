@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+import unicodedata
 from datetime import date
 
 MONTHS = {m: i + 1 for i, m in enumerate(
@@ -16,10 +17,22 @@ NAME_KEYS = {"patient_name", "policyholder_name"}
 _TITLES = re.compile(r"^(mr|mrs|ms|miss|dr|shri|smt|kumari|master|baby)\.?\s+", re.I)
 
 
+HINDI_MONTHS = {"जनवरी": "jan", "फ़रवरी": "feb", "फरवरी": "feb", "मार्च": "mar", "अप्रैल": "apr", "मई": "may",
+                "जून": "jun", "जुलाई": "jul", "अगस्त": "aug", "सितंबर": "sep", "सितम्बर": "sep", "अक्तूबर": "oct",
+                "अक्टूबर": "oct", "नवंबर": "nov", "नवम्बर": "nov", "दिसंबर": "dec", "दिसम्बर": "dec"}
+
+
+def ascii_digits(s: str) -> str:
+    """Devanagari / Bengali / Tamil / ... digits -> 0-9."""
+    return "".join(str(unicodedata.decimal(ch)) if unicodedata.decimal(ch, None) is not None else ch for ch in s)
+
+
 def parse_date(raw: str | None) -> str | None:
     if not raw:
         return None
-    s = raw.strip().lower().replace(",", " ")
+    s = ascii_digits(raw).strip().lower().replace(",", " ")
+    for hi, en in HINDI_MONTHS.items():
+        s = s.replace(hi, en)
     m = re.search(r"(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})", s)
     if m:
         y, mo, d = map(int, m.groups())
@@ -50,7 +63,7 @@ def parse_amount(raw: str | float | int | None) -> float | None:
         return None
     if isinstance(raw, (int, float)):
         return float(raw)
-    s = raw.lower().replace("₹", " ").replace("inr", " ").replace("rs.", " ").replace("rs", " ")
+    s = ascii_digits(raw).lower().replace("₹", " ").replace("inr", " ").replace("rs.", " ").replace("rs", " ")
     s = s.replace("/-", " ")
     m = re.search(r"(\d[\d,]*(?:\.\d+)?)\s*(lakh|lac|crore|cr)?", s)
     if not m:
@@ -72,6 +85,8 @@ def clean_name(raw: str | None) -> str | None:
 def normalize_value(key: str, raw: str | float | None) -> str | float | None:
     if raw is None or (isinstance(raw, str) and not raw.strip()):
         return None
+    if isinstance(raw, str) and key not in NAME_KEYS:
+        raw = ascii_digits(raw)
     if key in DATE_KEYS:
         return parse_date(str(raw))
     if key in AMOUNT_KEYS:

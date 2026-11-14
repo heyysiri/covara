@@ -20,6 +20,7 @@ import { DeleteClaimButton } from "@/features/intake/DeleteClaimButton";
 import { Checklist } from "@/features/intake/Checklist";
 import { AnalysisView } from "@/features/pipeline/AnalysisView";
 import { useAnalysis } from "@/features/pipeline/useAnalysis";
+import { useI18n, type TFn } from "@/i18n";
 import {
   ApiError,
   createClaim,
@@ -60,11 +61,11 @@ interface Item {
   duplicate?: boolean;
 }
 
-function validate(file: File): string | null {
+function validate(file: File, t: TFn): string | null {
   const ext = file.name.slice(file.name.lastIndexOf(".")).toLowerCase();
-  if (!ALLOWED.includes(ext)) return "Unsupported type. Use PDF, PNG or JPG.";
-  if (file.size > MAX_MB * 1024 * 1024) return `Larger than ${MAX_MB} MB.`;
-  if (file.size === 0) return "File is empty.";
+  if (!ALLOWED.includes(ext)) return t("Unsupported type. Use PDF, PNG or JPG.");
+  if (file.size > MAX_MB * 1024 * 1024) return t("Larger than {mb} MB.", { mb: MAX_MB });
+  if (file.size === 0) return t("File is empty.");
   return null;
 }
 
@@ -87,6 +88,7 @@ function guessCategory(name: string, path: string): DocumentCategory {
 }
 
 export function DocumentUpload() {
+  const { t } = useI18n();
   const inputRef = useRef<HTMLInputElement>(null);
   const [claimType, setClaimType] = useState<ClaimType>("reimbursement");
   const [claimId, setClaimId] = useState<string | null>(null);
@@ -116,7 +118,7 @@ export function DocumentUpload() {
       setDocs((d) => d.filter((x) => x.id !== id));
       getChecklist(claimId).then(setChecklist).catch(() => {});
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Could not remove the document.");
+      setError(e instanceof ApiError ? e.message : t("Could not remove the document."));
     }
   }
 
@@ -134,7 +136,7 @@ export function DocumentUpload() {
   // Files, folders and .zip archives all end up here as a flat list of documents.
   function addCollected(c: Collected) {
     const added: Item[] = c.files.map(({ file, path }) => {
-      const problem = validate(file);
+      const problem = validate(file, t);
       return {
         key: `${path}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2)}`,
         file,
@@ -148,10 +150,12 @@ export function DocumentUpload() {
     const lines = [...c.problems];
     if (c.skipped > 0) {
       lines.push(
-        `Ignored ${c.skipped} hidden, system or unsupported file${c.skipped === 1 ? "" : "s"} found in the folder or zip.`,
+        c.skipped === 1
+          ? t("Ignored 1 hidden, system or unsupported file found in the folder or zip.")
+          : t("Ignored {n} hidden, system or unsupported files found in the folder or zip.", { n: c.skipped }),
       );
     }
-    if (added.length === 0 && lines.length === 0) lines.push("No documents found.");
+    if (added.length === 0 && lines.length === 0) lines.push(t("No documents found."));
     setNotice(lines);
   }
 
@@ -196,12 +200,12 @@ export function DocumentUpload() {
             patch(g.key, reason ? { status: "rejected", error: reason } : { status: "uploaded", duplicate });
           });
         } catch (e) {
-          const msg = e instanceof ApiError ? e.message : "Upload failed.";
+          const msg = e instanceof ApiError ? e.message : t("Upload failed.");
           group.forEach((g) => patch(g.key, { status: "rejected", error: msg }));
         }
       }
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : "Something went wrong.");
+      setError(e instanceof ApiError ? e.message : t("Something went wrong."));
       setItems((prev) => prev.map((i) => (i.status === "uploading" ? { ...i, status: "staged" } : i)));
     } finally {
       setBusy(false);
@@ -215,16 +219,16 @@ export function DocumentUpload() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>1. Claim details</CardTitle>
-          <CardDescription>Health insurance claims are supported in this MVP.</CardDescription>
+          <CardTitle>{t("1. Claim details")}</CardTitle>
+          <CardDescription>{t("Health insurance claims are supported in this MVP.")}</CardDescription>
         </CardHeader>
         <CardContent>
           <label className="sr-only" htmlFor="claim-type">
-            Claim type
+            {t("Claim type")}
           </label>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="space-y-1 text-xs font-medium">
-              Claim type
+              {t("Claim type")}
               <select
                 id="claim-type"
                 value={claimType}
@@ -232,15 +236,15 @@ export function DocumentUpload() {
                 onChange={(e) => setClaimType(e.target.value as ClaimType)}
                 className="h-9 w-full rounded-md border bg-background px-3 text-sm font-normal disabled:opacity-60"
               >
-                <option value="reimbursement">Reimbursement</option>
-                <option value="cashless">Cashless</option>
+                <option value="reimbursement">{t("Reimbursement")}</option>
+                <option value="cashless">{t("Cashless")}</option>
               </select>
             </label>
             <label className="space-y-1 text-xs font-medium">
-              Amount you are claiming (₹)
+              {t("Amount you are claiming (₹)")}
               <input
                 inputMode="decimal"
-                placeholder="e.g. 95000"
+                placeholder={t("e.g. 95000")}
                 value={claimedAmount}
                 onChange={(e) => setClaimedAmount(e.target.value)}
                 onBlur={() => {
@@ -251,9 +255,9 @@ export function DocumentUpload() {
               />
             </label>
             <label className="space-y-1 text-xs font-medium">
-              Patient name
+              {t("Patient name")}
               <input
-                placeholder="As on the policy"
+                placeholder={t("As on the policy")}
                 value={patientName}
                 onChange={(e) => setPatientName(e.target.value)}
                 onBlur={() => claimId && updateClaim(claimId, { patient_name: patientName.trim() || null }).catch(() => {})}
@@ -270,9 +274,7 @@ export function DocumentUpload() {
               className="mt-0.5 size-4 accent-primary"
             />
             <span>
-              I consent to Covara processing these documents to prepare my claim. Documents are read by
-              AI providers (Google Gemini, Groq) only to extract claim details, are not used for any
-              other purpose, and can be deleted at any time with &quot;Delete my data&quot;.
+              {t('I consent to Covara processing these documents to prepare my claim. Documents are read by AI services (Claude and Sarvam) only to extract claim details, are not used for any other purpose, and can be deleted at any time with "Delete my data".')}
             </span>
           </label>
         </CardContent>
@@ -280,10 +282,9 @@ export function DocumentUpload() {
 
       <Card>
         <CardHeader>
-          <CardTitle>2. Upload documents</CardTitle>
+          <CardTitle>{t("2. Upload documents")}</CardTitle>
           <CardDescription>
-            PDF, PNG or JPG, up to {MAX_MB} MB each. Include your policy, bills, discharge summary,
-            prescriptions, reports and receipts. Use synthetic or demo documents only.
+            {t("PDF, PNG or JPG, up to {mb} MB each. Include your policy, bills, discharge summary, prescriptions, reports and receipts. Use synthetic or demo documents only.", { mb: MAX_MB })}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -307,7 +308,7 @@ export function DocumentUpload() {
             }`}
           >
             <UploadCloud className="size-8 text-muted-foreground" aria-hidden />
-            <p className="text-sm font-medium">Drop files, a folder or a .zip here, or click to browse</p>
+            <p className="text-sm font-medium">{t("Drop files, a folder or a .zip here, or click to browse")}</p>
             <input
               ref={inputRef}
               type="file"
@@ -323,13 +324,13 @@ export function DocumentUpload() {
 
           <div className="flex flex-wrap items-center gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => folderRef.current?.click()}>
-              <FolderOpen /> Choose folder
+              <FolderOpen /> {t("Choose folder")}
             </Button>
             <Button type="button" variant="outline" size="sm" onClick={() => zipRef.current?.click()}>
-              <FileArchive /> Choose .zip
+              <FileArchive /> {t("Choose .zip")}
             </Button>
             <span className="text-xs text-muted-foreground">
-              Zips and folders are opened in your browser; only the PDF/PNG/JPG documents inside are uploaded.
+              {t("Zips and folders are opened in your browser; only the PDF/PNG/JPG documents inside are uploaded.")}
             </span>
             {/* webkitdirectory lets the user pick a whole folder (supported by all major browsers) */}
             <input
@@ -356,7 +357,7 @@ export function DocumentUpload() {
 
           {notice.length > 0 && (
             <Alert>
-              <AlertTitle>Heads up</AlertTitle>
+              <AlertTitle>{t("Heads up")}</AlertTitle>
               <AlertDescription>
                 {notice.map((line) => (
                   <p key={line}>{line}</p>
@@ -379,12 +380,12 @@ export function DocumentUpload() {
                       {(item.file.size / 1024).toFixed(0)} KB
                       {item.error && <span className="ml-2 text-destructive">{item.error}</span>}
                       {item.duplicate && (
-                        <span className="ml-2 text-amber-600">Same file already uploaded (possible duplicate)</span>
+                        <span className="ml-2 text-amber-600">{t("Same file already uploaded (possible duplicate)")}</span>
                       )}
                     </p>
                   </div>
                   <select
-                    aria-label={`Category for ${item.file.name}`}
+                    aria-label={t("Category for {name}", { name: item.file.name })}
                     value={item.category}
                     disabled={item.status !== "staged"}
                     onChange={(e) => patch(item.key, { category: e.target.value as DocumentCategory })}
@@ -392,7 +393,7 @@ export function DocumentUpload() {
                   >
                     {DOCUMENT_CATEGORIES.map((c) => (
                       <option key={c.value} value={c.value}>
-                        {c.label}
+                        {t(c.label)}
                       </option>
                     ))}
                   </select>
@@ -401,7 +402,7 @@ export function DocumentUpload() {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Remove ${item.file.name}`}
+                      aria-label={t("Remove {name}", { name: item.file.name })}
                       onClick={() => setItems((prev) => prev.filter((i) => i.key !== item.key))}
                     >
                       <Trash2 />
@@ -414,24 +415,23 @@ export function DocumentUpload() {
 
           {error && (
             <Alert variant="destructive">
-              <AlertTitle>Could not upload</AlertTitle>
+              <AlertTitle>{t("Could not upload")}</AlertTitle>
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
 
           <div className="flex flex-wrap items-center gap-3">
-            <Button onClick={submit} disabled={busy || stagedCount === 0 || !consent}>
+            <Button className="h-11 w-full rounded-full bg-brand! px-6 font-semibold text-navy! hover:bg-[#33c9f5]! sm:w-auto" onClick={submit} disabled={busy || stagedCount === 0 || !consent}>
               {busy && <Loader2 className="animate-spin" />}
-              {claimId ? "Upload more documents" : "Create claim & upload"}
+              {claimId ? t("Upload more documents") : t("Create claim & upload")}
               {stagedCount > 0 && ` (${stagedCount})`}
             </Button>
             {!consent && stagedCount > 0 && (
-              <span className="text-xs text-muted-foreground">Tick the consent box above to upload.</span>
+              <span className="text-xs text-muted-foreground">{t("Tick the consent box above to upload.")}</span>
             )}
             {claimId && (
               <span className="text-xs text-muted-foreground">
-                Claim session <code className="font-mono">{claimId.slice(0, 8)}</code> ·{" "}
-                {uploadedCount} uploaded
+                {t("Claim session {id} · {n} uploaded", { id: claimId.slice(0, 8), n: uploadedCount })}
               </span>
             )}
             {claimId && (
@@ -442,20 +442,23 @@ export function DocumentUpload() {
           </div>
           {docs.length > 0 && (
             <div className="rounded-lg border">
-              <p className="border-b px-3 py-2 text-sm font-medium">Documents in this claim ({docs.length})</p>
+              <p className="border-b px-3 py-2 text-sm font-medium">{t("Documents in this claim ({n})", { n: docs.length })}</p>
               <ul className="divide-y">
                 {docs.map((d) => (
                   <li key={d.id} className="flex items-center gap-3 px-3 py-2 text-sm">
                     <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
                     <span className="min-w-0 flex-1 truncate">{d.original_filename}</span>
-                    {d.duplicate_of && <span className="text-xs text-amber-600">Same file as an earlier upload</span>}
+                    {d.duplicate_of && <span className="text-xs text-amber-600">{t("Same file as an earlier upload")}</span>}
                     <span className="text-xs text-muted-foreground">
-                      {DOCUMENT_CATEGORIES.find((c) => c.value === d.category)?.label}
+                      {(() => {
+                        const label = DOCUMENT_CATEGORIES.find((c) => c.value === d.category)?.label;
+                        return label ? t(label) : d.category;
+                      })()}
                     </span>
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      aria-label={`Remove ${d.original_filename}`}
+                      aria-label={t("Remove {name}", { name: d.original_filename })}
                       disabled={analysis.running}
                       onClick={() => removeDoc(d.id)}
                     >
@@ -466,7 +469,7 @@ export function DocumentUpload() {
               </ul>
               {analysis.results?.documents.length ? (
                 <p className="border-t px-3 py-2 text-xs text-muted-foreground">
-                  Changed your documents? Press Re-check in the results below.
+                  {t("Changed your documents? Press Re-check in the results below.")}
                 </p>
               ) : null}
             </div>
@@ -477,25 +480,25 @@ export function DocumentUpload() {
 
       <Card>
         <CardHeader>
-          <CardTitle>3. Analyse</CardTitle>
+          <CardTitle>{t("3. Analyse")}</CardTitle>
           <CardDescription>
-            Covara reads every document, checks it against your policy and builds an action plan.
-            Each value links back to the page it came from.
+            {t("Covara reads every document, checks it against your policy and builds an action plan. Each value links back to the page it came from.")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {!analysis.results?.documents.length && (
             <Button
+              className="h-11 w-full rounded-full bg-brand! px-6 font-semibold text-navy! hover:bg-[#33c9f5]! sm:w-auto"
               onClick={analysis.start}
               disabled={!claimId || uploadedCount === 0 || analysis.running || busy}
             >
               {analysis.running ? <Loader2 className="animate-spin" /> : <Sparkles />}
-              {analysis.running ? "Analysing…" : "Analyse claim"}
+              {analysis.running ? t("Analysing…") : t("Analyse claim")}
             </Button>
           )}
           {analysis.error && (
             <Alert variant="destructive">
-              <AlertTitle>Could not analyse</AlertTitle>
+              <AlertTitle>{t("Could not analyse")}</AlertTitle>
               <AlertDescription>{analysis.error}</AlertDescription>
             </Alert>
           )}
@@ -515,9 +518,10 @@ export function DocumentUpload() {
 }
 
 function StatusIcon({ status }: { status: ItemStatus }) {
-  if (status === "uploading") return <Loader2 className="size-4 animate-spin" aria-label="Uploading" />;
+  const { t } = useI18n();
+  if (status === "uploading") return <Loader2 className="size-4 animate-spin" aria-label={t("Uploading")} />;
   if (status === "uploaded")
-    return <CheckCircle2 className="size-4 text-emerald-600" aria-label="Uploaded" />;
-  if (status === "rejected") return <XCircle className="size-4 text-destructive" aria-label="Rejected" />;
-  return <span className="text-xs text-muted-foreground">Ready</span>;
+    return <CheckCircle2 className="size-4 text-emerald-600" aria-label={t("Uploaded")} />;
+  if (status === "rejected") return <XCircle className="size-4 text-destructive" aria-label={t("Rejected")} />;
+  return <span className="text-xs text-muted-foreground">{t("Ready")}</span>;
 }
