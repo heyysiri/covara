@@ -34,9 +34,10 @@ class Paths:
     def for_(cls, s: Scenario) -> "Paths":
         k = s.key
         rx_dir = "medical" if s.rx_uploaded else "medical/_held_back"
+        rx_ext = "jpg" if s.handwritten_rx else "pdf"
         return cls(f"policy/claim_{k}_policy.pdf", f"medical/claim_{k}_final_bill.pdf", f"medical/claim_{k}_final_bill_copy.pdf",
                    f"medical/claim_{k}_itemised_bill.pdf", f"medical/claim_{k}_discharge_summary.pdf",
-                   f"medical/claim_{k}_payment_receipt.pdf", f"{rx_dir}/claim_{k}_prescription_{s.rx_no}.pdf")
+                   f"medical/claim_{k}_payment_receipt.pdf", f"{rx_dir}/claim_{k}_prescription_{s.rx_no}.{rx_ext}")
 
 
 def ev(file: str, page: int, quote: str) -> dict:
@@ -117,6 +118,8 @@ def expected_fields(s: Scenario, p: Paths) -> list[dict]:
         f.append(_field("referenced_document", f"prescription {s.rx_no}", f"prescription no. {s.rx_no}", p.discharge, 1, f"As per prescription no. {s.rx_no}"))
     if s.room:
         f.append(_field("room_rent_charged_per_day", s.room.rate, s.room.description, p.itemised, 1, s.room.description))
+    if s.handwritten_rx:  # read from a photo: no text layer, so the quote is not checked against the page
+        f.append({**_field("patient_name", s.patient, s.patient, p.rx, 1, s.patient), "unverifiable": True})
     f += [_field("receipt_amount", s.total, rs(s.total), p.receipt, 1, f"AMOUNT RECEIVED: {rs(s.total)}"),
           _field("receipt_date", s.bill_date.isoformat(), fmt_date(s.bill_date), p.receipt, 1, fmt_date(s.bill_date)),
           _field("patient_name", s.receipt_display_name, s.receipt_display_name, p.receipt, 1, s.receipt_display_name)]
@@ -218,7 +221,7 @@ def build_expected(s: Scenario, p: Paths) -> dict:
     return {
         "scenario": f"claim_{s.key}", "title": s.title, "synthetic": True,
         "claim_input": {"domain": "health", "claim_type": "reimbursement", "claimed_amount": s.claimed_amount, "patient_name": s.patient},
-        "upload_set": uploads, "held_back_for_live_fix": held,
+        "upload_set": uploads, "held_back_for_live_fix": held, "scanned": list(s.scanned) + (["prescription (handwritten)"] if s.handwritten_rx else []),
         "expected_fields": expected_fields(s, p), "expected_findings": findings,
         "expected_checks_passed": expected_checks_passed(s),
         "expected_checklist": {"required_present": ["policy", "final_bill", "itemised_bill", "discharge_summary", "payment_receipt"],
@@ -257,7 +260,8 @@ def verify(root: Path, exp: dict) -> list[str]:
             errors.append(f"{label}: quote not found on {file} p.{n}: {quote!r}")
 
     for f in exp["expected_fields"]:
-        check(f["file"], f["page"], f["quote"], f"field {f['key']}")
+        if not f.get("unverifiable"):
+            check(f["file"], f["page"], f["quote"], f"field {f['key']}")
     for fd in exp["expected_findings"]:
         for e in fd["evidence"]:
             if "file" in e:
@@ -266,7 +270,7 @@ def verify(root: Path, exp: dict) -> list[str]:
             c = fd["clause"]
             check(c["file"], c["page"], c["quote"], f"finding {fd['id']} clause")
     for item in exp["upload_set"] + exp["held_back_for_live_fix"]:
-        with pymupdf.open(root / item["file"]) as d:
+        with pymupdf.open(root / item["file"]) as d:  # images open as one-page documents
             if d.page_count != item["pages"]:
                 errors.append(f"{item['file']}: expected {item['pages']} pages, got {d.page_count}")
     return errors

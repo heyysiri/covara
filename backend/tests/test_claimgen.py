@@ -22,13 +22,13 @@ def built():
     from claimgen.__main__ import build
 
     out = {}
-    for key in "abc":
+    for key in "abcd":
         root = Path(tempfile.mkdtemp(prefix=f"claimgen-{key}-"))
         out[key] = (root, *build(key, root))
     return out
 
 
-@pytest.mark.parametrize("key", list("abc"))
+@pytest.mark.parametrize("key", list("abcd"))
 def test_every_quote_in_the_ground_truth_is_on_its_page(built, key):
     _, exp, errors = built[key]
     assert errors == [] and exp["expected_fields"]
@@ -55,6 +55,19 @@ def test_regenerating_reproduces_the_committed_files_byte_for_byte(built, key):
         assert sorted(map(f, old["expected_fields"])) == sorted(map(f, exp["expected_fields"]))
         assert sorted(map(g, old["expected_findings"])) == sorted(map(g, exp["expected_findings"]))
         assert old["upload_set"] == exp["upload_set"] and old["expected_packet_status"] == exp["expected_packet_status"]
+
+
+def test_claim_d_is_really_image_only_apart_from_the_policy(built):
+    """Scans must have no text layer, so extraction has to read the picture. (Not byte-compared: the handwriting font is per-machine.)"""
+    import pymupdf
+
+    root, exp, _ = built["d"]
+    assert exp["scanned"] and any(i["file"].endswith(".jpg") for i in exp["upload_set"])
+    for item in exp["upload_set"]:
+        if "policy" in item["file"]:
+            continue
+        with pymupdf.open(root / item["file"]) as d:
+            assert not any(pg.get_text().strip() for pg in d), item["file"]
 
 
 def test_the_clean_claim_plants_nothing_and_claim_c_plants_only_the_waiting_period(built):

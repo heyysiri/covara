@@ -134,6 +134,8 @@ class Scenario:
     rx_referenced: bool = False  # the discharge summary refers to a prescription
     rx_uploaded: bool = False  # ...and it is part of the upload (False = held back for the live fix)
     diagnosis_date: date | None = None
+    scanned: tuple[str, ...] = ()  # documents delivered as phone-photo style scans: policy, final, copy, itemised, discharge, receipt
+    handwritten_rx: bool = False  # the prescription is a photographed handwritten page (JPEG)
 
     # ---- derived
     @property

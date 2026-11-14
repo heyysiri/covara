@@ -2,11 +2,13 @@
 
   A  clean claim: every document agrees, nothing should be flagged (the false-alarm test)
   B  the hero demo: amount mismatch, duplicate bill, missing prescription, room rent above the limit, name variant
+  D  claim A's facts delivered as phone-photo scans and a handwritten prescription (the real-world input)
   C  a treatment inside the policy's waiting period (cataract surgery 18 days after a new policy began)
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
 
 from .scenario import Line, Scenario
@@ -103,4 +105,12 @@ def claim_c() -> Scenario:
     )
 
 
-SCENARIOS = {"a": claim_a, "b": claim_b, "c": claim_c}
+def claim_d() -> Scenario:
+    """Claim A's facts, but as a user would really upload them: phone photos of paper and a handwritten prescription."""
+    return replace(
+        claim_a(), key="d", title="Photographed paper: claim A's facts as phone-photo scans and a handwritten prescription",
+        scanned=("final", "itemised", "discharge", "receipt"), handwritten_rx=True,
+    )
+
+
+SCENARIOS = {"a": claim_a, "b": claim_b, "c": claim_c, "d": claim_d}

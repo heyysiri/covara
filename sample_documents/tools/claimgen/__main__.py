@@ -7,7 +7,10 @@ import json
 import sys
 from pathlib import Path
 
+import pymupdf
+
 from . import documents as d
+from . import scan
 from .scenarios import SCENARIOS
 from .truth import Paths, build_expected, verify, write_zip
 
@@ -24,9 +27,19 @@ def build(key: str, root: Path, write_json: bool = True) -> tuple[dict, list[str
     d.make_discharge_summary(s, root / p.discharge)
     d.make_receipt(s, root / p.receipt)
     if s.rx_referenced:
-        d.make_prescription(s, root / p.rx)
+        if s.handwritten_rx:
+            scan.handwritten_prescription(s, root / p.rx, seed=2000)  # a photo: no text layer to quote from
+        else:
+            d.make_prescription(s, root / p.rx)
     exp = build_expected(s, p)
-    errors = verify(root, exp)
+    errors = verify(root, exp)  # checked on the clean, text-layer versions, BEFORE anything is turned into a scan
+    paths = {"policy": p.policy, "final": p.final, "copy": p.copy, "itemised": p.itemised, "discharge": p.discharge, "receipt": p.receipt}
+    for n, name in enumerate(s.scanned):
+        scan.scan_pdf(root / paths[name], seed=1000 + n)
+    for name in s.scanned:  # a scan must really have no text layer
+        with pymupdf.open(root / paths[name]) as doc:
+            if any(pg.get_text().strip() for pg in doc):
+                errors.append(f"{paths[name]} still has a text layer")
     if write_json:
         out = root / "expected_results" / f"claim_{key}.json"
         out.parent.mkdir(parents=True, exist_ok=True)
