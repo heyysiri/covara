@@ -54,7 +54,9 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> list[str]:
-        return [o.strip().rstrip("/") for o in self.frontend_origin.split(",") if o.strip()]
+        origins = [o.strip().rstrip("/") for o in self.frontend_origin.split(",") if o.strip()]
+        # An empty FRONTEND_ORIGIN in .env must not silently block the browser app: fall back to the local defaults.
+        return origins or ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     @property
     def max_upload_bytes(self) -> int:
