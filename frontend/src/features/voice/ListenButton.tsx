@@ -18,6 +18,7 @@ export function ListenButton({ claimId, disabled }: { claimId: string; disabled?
   const { speaking, speak, halt } = useSpeaker();
   const [available, setAvailable] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [transcript, setTranscript] = useState<string | null>(null); // what is being read, so listeners can follow along
 
   useEffect(() => {
     let cancelled = false;
@@ -34,6 +35,7 @@ export function ListenButton({ claimId, disabled }: { claimId: string; disabled?
     setLoading(true);
     try {
       const summary = await getSummary(claimId, lang);
+      setTranscript(summary.speech);
       await speak(summary.speech, lang);
     } catch {
       halt();
@@ -43,9 +45,22 @@ export function ListenButton({ claimId, disabled }: { claimId: string; disabled?
   }
 
   return (
-    <Button variant="outline" size="sm" onClick={toggle} disabled={disabled || loading}>
-      {loading ? <Loader2 className="animate-spin" /> : speaking ? <VolumeX /> : <Volume2 />}
-      {speaking ? t("Stop") : t("Listen")}
-    </Button>
+    <>
+      <Button variant="outline" size="sm" onClick={toggle} disabled={disabled || loading}>
+        {loading ? <Loader2 className="animate-spin" /> : speaking ? <VolumeX /> : <Volume2 />}
+        {speaking ? t("Stop") : t("Listen")}
+      </Button>
+      {transcript && (
+        <div className="order-last basis-full rounded-xl bg-white/70 p-3 text-sm">
+          <div className="mb-1 flex items-center justify-between text-xs font-medium opacity-70">
+            {t("Reading aloud")}
+            <button type="button" onClick={() => setTranscript(null)} className="underline underline-offset-2">
+              {t("Hide")}
+            </button>
+          </div>
+          <p>{transcript}</p>
+        </div>
+      )}
+    </>
   );
 }

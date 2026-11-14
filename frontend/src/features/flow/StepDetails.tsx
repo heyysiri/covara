@@ -111,7 +111,7 @@ export function StepDetails({
         </button>
         {more && (
           <p className="mt-2 text-sm text-muted-foreground">
-            {t('Documents are read by AI services (Claude and Sarvam) only to extract claim details, are not used for any other purpose, and can be deleted at any time with "Delete my data". Claims are removed automatically after a few days.')}
+            {t('Documents are read automatically only to extract claim details, are not used for any other purpose, and can be deleted at any time with "Delete my data". Claims are deleted automatically after 3 days.')}
           </p>
         )}
       </div>

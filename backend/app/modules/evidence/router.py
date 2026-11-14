@@ -29,6 +29,7 @@ def page_image(
     highlight: list[str] = Query(default=[], max_length=10, description="Quote(s) to highlight (repeatable)"),
     bbox: list[str] = Query(default=[], max_length=10, description="Fallback boxes 'x0,y0,x1,y1', normalised 0-1"),
     dpi: int = Query(default=110, ge=50, le=200),
+    focus: bool = Query(default=False, description="Close-up around the highlight (small screens)"),
 ) -> Response:
     claim = claim_store.get_claim(claim_id)
     doc = next((d for d in claim.documents if d.id == document_id), None) if claim else None
@@ -39,7 +40,7 @@ def page_image(
         raise HTTPException(status_code=404, detail="File not found")
     quotes = [q[:600] for q in highlight if q.strip()]
     try:
-        out = render_page(path, page, quotes, [_bbox(b) for b in bbox], dpi)
+        out = render_page(path, page, quotes, [_bbox(b) for b in bbox], dpi, focus)
     except PageOutOfRange as e:
         raise HTTPException(status_code=404, detail=str(e))
     except Exception:
@@ -52,7 +53,8 @@ def page_image(
             "X-Highlights-Requested": str(len(quotes)),
             "X-Bbox-Highlights": str(out.bbox_highlights),
             "X-Page-Count": str(out.page_count),
-            "Access-Control-Expose-Headers": "X-Highlights-Found, X-Highlights-Requested, X-Bbox-Highlights, X-Page-Count",
+            "X-Focused": "1" if out.focused else "0",
+            "Access-Control-Expose-Headers": "X-Highlights-Found, X-Highlights-Requested, X-Bbox-Highlights, X-Page-Count, X-Focused",
             "Cache-Control": "private, max-age=300",
         },
     )

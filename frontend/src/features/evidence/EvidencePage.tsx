@@ -1,10 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ExternalLink, Loader2, Maximize2, X, ZoomIn, ZoomOut } from "lucide-react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+import { Loader2, Maximize2, X, ZoomIn, ZoomOut } from "lucide-react";
 
 import { useI18n } from "@/i18n";
-import { documentFileUrl } from "@/lib/api";
 import type { EvidenceRef } from "@/types/results";
 
 import { evidenceImageUrl } from "./evidenceUrl";
@@ -26,10 +25,24 @@ type Props = {
  * One cited page of an uploaded document, with the cited text highlighted.
  * Honest about what happened: if the quote could not be found on the page we say so and show the plain page.
  */
+/** True on phone-sized screens, where a whole page is too small to read: we show a close-up of the highlight instead. */
+const PHONE = "(max-width: 767px)";
+const usePhone = () =>
+  useSyncExternalStore(
+    (cb) => {
+      const m = window.matchMedia(PHONE);
+      m.addEventListener("change", cb);
+      return () => m.removeEventListener("change", cb);
+    },
+    () => window.matchMedia(PHONE).matches,
+    () => false,
+  );
+
 export function EvidencePage(props: Props) {
   const { t } = useI18n();
+  const phone = usePhone();
   const { claimId, evidence, quote } = props;
-  const url = evidence.document_id && evidence.page_number ? evidenceImageUrl(claimId, evidence, { quote }) : null;
+  const url = evidence.document_id && evidence.page_number ? evidenceImageUrl(claimId, evidence, { quote, focus: phone }) : null;
   // Remount when the image changes so loading state resets without setting state inside the effect.
   return url ? <LoadedPage key={url} {...props} url={url} /> : <p className="text-sm text-muted-foreground">{t("No page is attached to this evidence.")}</p>;
 }
@@ -57,7 +70,6 @@ function LoadedPage({ claimId, evidence, caption, quote, url }: Props & { url: s
     };
   }, [url, t]);
 
-  const open = `${documentFileUrl(claimId, evidence.document_id as string)}#page=${evidence.page_number}`;
 
   return (
     <figure className="space-y-1.5">
@@ -66,9 +78,6 @@ function LoadedPage({ claimId, evidence, caption, quote, url }: Props & { url: s
         <button type="button" onClick={() => setFull(true)} className="ml-auto inline-flex items-center gap-1 font-medium text-navy underline-offset-2 hover:underline">
           <Maximize2 className="size-3" aria-hidden /> {t("Full screen")}
         </button>
-        <a href={open} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline-offset-2 hover:text-foreground hover:underline">
-          {t("Original file")} <ExternalLink className="size-3" aria-hidden />
-        </a>
       </figcaption>
       <div className="overflow-hidden rounded-lg border bg-muted/30">
         {state.status === "loading" && (
@@ -92,7 +101,6 @@ function LoadedPage({ claimId, evidence, caption, quote, url }: Props & { url: s
           {t("Could not locate the exact text on this page, so the page is shown without a highlight.")}
         </p>
       )}
-      {state.status === "ready" && <p className="text-xs text-muted-foreground">{t("Tap the page to view it full screen.")}</p>}
       {full && (
         <Lightbox
           title={caption ?? `${evidence.filename} · page ${evidence.page_number}`}
@@ -107,7 +115,7 @@ function LoadedPage({ claimId, evidence, caption, quote, url }: Props & { url: s
 /** The same highlighted page, full screen and zoomable. Esc or the close button leaves. */
 function Lightbox({ title, src, onClose }: { title: string; src: string; onClose: () => void }) {
   const { t } = useI18n();
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(typeof window !== "undefined" && window.matchMedia(PHONE).matches ? 2 : 1);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);

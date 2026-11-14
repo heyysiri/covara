@@ -34,6 +34,8 @@ export function AnalysisView({
   onResults,
   onAddDocuments,
   onDeleted,
+  claimedAmount,
+  onSaveAmount,
 }: {
   claimId: string;
   results: AnalysisResults;
@@ -42,6 +44,9 @@ export function AnalysisView({
   onResults: (r: AnalysisResults) => void;
   onAddDocuments: () => void;
   onDeleted: () => void;
+  claimedAmount: number | null;
+  /** Save the claimed amount on the claim. */
+  onSaveAmount: (amount: number | null) => Promise<void>;
 }) {
   const { t } = useI18n();
   const READINESS = {
@@ -49,14 +54,15 @@ export function AnalysisView({
     needs_attention: { label: t("Needs attention"), icon: AlertTriangle, cls: "border-amber-500/50 bg-amber-50 text-amber-950", icon_cls: "text-amber-600" },
     incomplete: { label: t("Incomplete"), icon: XCircle, cls: "border-destructive/40 bg-red-50 text-red-950", icon_cls: "text-destructive" },
   } as const;
-  const [explanationL, errorL, packetL, disclaimerL, ...warningsL] = useLocalized([
+  const [explanationL, errorL, disclaimerL, ...warningsL] = useLocalized([
     results.readiness_explanation,
     results.error ?? "",
-    results.packet_status ?? "",
     results.disclaimer,
     ...results.warnings,
   ]);
   const [tab, setTab] = useState<Tab>("todo");
+  const [amountText, setAmountText] = useState(claimedAmount == null ? "" : String(claimedAmount));
+  const [saving, setSaving] = useState(false);
   const [focus, setFocus] = useState<string | null>(null); // a finding to open straight away on the Findings tab
   const [more, setMore] = useState<More>("extracted");
   const running = results.status === "processing";
@@ -65,7 +71,6 @@ export function AnalysisView({
   const openActions = results.action_plan.filter((a) => !a.done).length;
   const reviewCount = results.fields.filter(needsReview).length;
   const r = results.readiness_status ? READINESS[results.readiness_status] : null;
-  const aiCalls = results.llm_calls.filter((c) => c.ok);
 
   const nav: { id: Tab; label: string; icon: typeof ListChecks; badge?: number }[] = [
     { id: "todo", label: t("To do"), icon: ListChecks, badge: openActions },
@@ -95,13 +100,17 @@ export function AnalysisView({
         </div>
       )}
 
-      {r && tab !== "todo" && (
+      {r && tab !== "todo" && tab !== "packet" && (
         <section className={`md:order-1 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border px-4 py-3 ${r.cls}`} aria-live="polite">
           <r.icon className={`size-5 shrink-0 ${r.icon_cls}`} aria-hidden />
           <span className="font-semibold">{r.label}</span>
-          <span className="ml-auto text-xs font-medium opacity-80">
-            {t("{n} to fix before submitting", { n: blocking })} · {t("{n} to review", { n: open.length - blocking })}
-          </span>
+          {open.length > 0 && (
+            <span className="ml-auto text-xs font-medium opacity-80">
+              {[blocking > 0 && t("{n} to fix before submitting", { n: blocking }), open.length - blocking > 0 && t("{n} to review", { n: open.length - blocking })]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          )}
         </section>
       )}
 
@@ -114,12 +123,13 @@ export function AnalysisView({
               <p className="mt-0.5 text-sm opacity-90">{explanationL}</p>
             </div>
           </div>
-          <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
-            <span className="rounded-full bg-white/70 px-2.5 py-1">{t("{n} to fix before submitting", { n: blocking })}</span>
-            <span className="rounded-full bg-white/70 px-2.5 py-1">{t("{n} to review", { n: open.length - blocking })}</span>
-          </div>
-          {results.packet_status && <p className="mt-2 text-xs font-medium opacity-80">{t("Claim packet: {status}", { status: packetL })}</p>}
-          <div className="mt-3 flex items-center gap-2">
+          {open.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
+              {blocking > 0 && <span className="rounded-full bg-white/70 px-2.5 py-1">{t("{n} to fix before submitting", { n: blocking })}</span>}
+              {open.length - blocking > 0 && <span className="rounded-full bg-white/70 px-2.5 py-1">{t("{n} to review", { n: open.length - blocking })}</span>}
+            </div>
+          )}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
             <ListenButton claimId={claimId} disabled={running} />
             <button
               type="button"
@@ -144,6 +154,44 @@ export function AnalysisView({
       )}
 
       <div role="tabpanel" aria-label={nav.find((n) => n.id === tab)?.label} className="md:order-4">
+        {tab === "todo" && (
+          <section className="mb-4 rounded-2xl border bg-card p-4">
+            <h3 className="text-sm font-semibold text-navy">{t("Fixed something? Update your claim")}</h3>
+            <label htmlFor="fix-amount" className="mt-3 block text-xs font-medium">
+              {t("Amount you are claiming (₹)")}
+            </label>
+            <div className="mt-1 flex gap-2">
+              <input
+                id="fix-amount"
+                inputMode="decimal"
+                value={amountText}
+                onChange={(e) => setAmountText(e.target.value)}
+                className="h-11 min-w-0 flex-1 rounded-xl border bg-background px-3 text-base outline-none focus:border-brand focus:ring-4 focus:ring-brand/20"
+              />
+              <button
+                type="button"
+                disabled={running || saving}
+                onClick={async () => {
+                  const n = amountText.trim() ? Number(amountText.replace(/[,₹\s]/g, "")) : null;
+                  if (n !== null && Number.isNaN(n)) return;
+                  setSaving(true);
+                  try {
+                    await onSaveAmount(n);
+                    onRecheck();
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                className="h-11 shrink-0 rounded-full bg-brand px-4 text-sm font-semibold text-navy disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="size-4 animate-spin" /> : t("Save & re-check")}
+              </button>
+            </div>
+            <button type="button" onClick={onAddDocuments} className="mt-3 text-sm font-medium text-navy underline underline-offset-2">
+              {t("Add or remove documents")}
+            </button>
+          </section>
+        )}
         {tab === "todo" && <ActionPlan claimId={claimId} results={results} onChange={(action_plan) => onResults({ ...results, action_plan })} onViewEvidence={viewEvidence} />}
         {tab === "findings" && <FindingsPanel key={focus ?? "list"} claimId={claimId} results={results} initialOpenId={focus} />}
         {tab === "packet" && <PacketPanel claimId={claimId} results={results} />}
@@ -175,9 +223,6 @@ export function AnalysisView({
       </div>
 
       <p className="pt-2 text-xs text-muted-foreground md:order-5">
-        {aiCalls.length > 0
-          ? t("Read with {providers}.", { providers: results.providers_used.join(", ") })
-          : t("Read with Covara's rule-based extractor (no AI provider configured).")}{" "}
         {t("Every value links to its source page.")} {disclaimerL}
       </p>
 

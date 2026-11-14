@@ -51,15 +51,12 @@ export function ActionPlan({
     insurer: { label: t("Insurer"), icon: Shield },
   };
   const actions = results.action_plan;
-  const clauses = new Map(results.clauses.map((c) => [c.id, c]));
-  const findings = new Map(results.findings.map((f) => [f.id, f]));
   const open = actions.filter((a) => !a.done).length;
 
   // Backend text arrives in English: translate it for display (amounts, dates and IDs stay unchanged).
   const loc = useLocalized([
     ...actions.flatMap((a) => [a.title, a.why, a.draft_message ?? "", ...a.how]),
     ...results.checks_passed,
-    ...results.findings.map((f) => f.title),
   ]);
   const starts = actions.reduce<number[]>((acc, a, i) => {
     acc.push(i === 0 ? 0 : acc[i - 1] + 3 + actions[i - 1].how.length);
@@ -71,9 +68,6 @@ export function ActionPlan({
     return { title: seg[0], why: seg[1], draft: a.draft_message ? seg[2] : null, how: seg.slice(3) };
   });
   const checksL = loc.slice(actionsEnd, actionsEnd + results.checks_passed.length);
-  const findingTitleL = new Map(
-    results.findings.map((f, i) => [f.id, loc[actionsEnd + results.checks_passed.length + i]]),
-  );
 
   async function toggle(a: Action) {
     const updated = await setActionDone(claimId, a.id, !a.done);
@@ -106,6 +100,9 @@ export function ActionPlan({
       <p className="text-sm text-muted-foreground">
         {t("{open} of {total} actions open. Blocking items are listed first.", { open, total: actions.length })}
       </p>
+      <p className="rounded-xl bg-secondary/60 p-3 text-xs text-navy">
+        {t("Ticking a box only tracks your own progress. To clear an item, actually fix it (change the amount, remove the duplicate, add the missing document), then press Re-check: Covara re-reads your documents.")}
+      </p>
       <ul className="space-y-2">
         {actions.map((a, ai) => {
           const O = OWNER[a.owner];
@@ -137,16 +134,6 @@ export function ActionPlan({
                     </ol>
                   )}
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-                    {a.finding_ids.map((id) => findings.get(id)).filter(Boolean).map((f) => (
-                      <span key={f!.id}>
-                        {t("Finding: {title} ({rule})", { title: findingTitleL.get(f!.id) ?? f!.title, rule: f!.rule_id })}
-                      </span>
-                    ))}
-                    {a.clause_ids.map((id) => clauses.get(id)).filter(Boolean).map((c) => (
-                      <span key={c!.id}>
-                        {t("Policy clause {ref} · {file} p.{page}", { ref: c!.clause_ref, file: c!.filename, page: c!.page_number })}
-                      </span>
-                    ))}
                     {a.checklist_category && <span>{t("From the document checklist")}</span>}
                   </div>
                   {onViewEvidence && a.finding_ids.length > 0 && (

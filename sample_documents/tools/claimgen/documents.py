@@ -32,6 +32,9 @@ def make_policy(s: Scenario, path: Path) -> None:
         P("<b>1.4 Associated Medical Expenses</b> means " + x(s.definition_included) + " incurred during the hospitalisation. "
           + x(s.definition_excluded) + " are not Associated Medical Expenses."),
         P("<b>1.5 Reimbursement Claim</b> means a claim where the insured first pays the hospital and then applies to the insurer for repayment."),
+        P("SECTION 2 - ELIGIBILITY", H1),
+        P("<b>2.1 Insured Person.</b> Cover applies only to the person named in the Schedule, within the Current Policy Period."),
+        P("<b>2.2 Continuity.</b> Cover continues across renewals without a break; waiting periods are counted from the first policy inception date."),
         PageBreak()]
 
     story += [P("SECTION 3 - WHAT IS COVERED", H1),

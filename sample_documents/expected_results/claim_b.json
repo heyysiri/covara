@@ -44,10 +44,10 @@
     {
       "file": "medical/_held_back/claim_b_prescription_RX-7781.pdf",
       "doc_type": "prescription",
-      "pages": 1,
-      "purpose": "Upload during the demo to resolve B-F3."
+      "pages": 1
     }
   ],
+  "scanned": [],
   "expected_fields": [
     {
       "key": "policy_number",
@@ -186,22 +186,6 @@
       "quote": "M-889201"
     },
     {
-      "key": "policy_number",
-      "value": "SSH-2026-004567",
-      "raw_text": "SSH-2026-004567",
-      "file": "medical/claim_b_discharge_summary.pdf",
-      "page": 1,
-      "quote": "SSH-2026-004567"
-    },
-    {
-      "key": "member_id",
-      "value": "M-889201",
-      "raw_text": "M-889201",
-      "file": "medical/claim_b_discharge_summary.pdf",
-      "page": 1,
-      "quote": "M-889201"
-    },
-    {
       "key": "bill_number",
       "value": "INV-2026-08-10457",
       "raw_text": "INV-2026-08-10457",
@@ -280,6 +264,22 @@
       "file": "medical/claim_b_discharge_summary.pdf",
       "page": 1,
       "quote": "Laparoscopic appendectomy performed on 13-Aug-2026"
+    },
+    {
+      "key": "policy_number",
+      "value": "SSH-2026-004567",
+      "raw_text": "SSH-2026-004567",
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "page": 1,
+      "quote": "SSH-2026-004567"
+    },
+    {
+      "key": "member_id",
+      "value": "M-889201",
+      "raw_text": "M-889201",
+      "file": "medical/claim_b_discharge_summary.pdf",
+      "page": 1,
+      "quote": "M-889201"
     },
     {
       "key": "referenced_document",
@@ -545,16 +545,17 @@
         "quote": "Room rent is payable up to 1% of the Sum Insured per day"
       },
       "exposure_amount": 23867,
+      "fix": "Ask the insurer whether proportionate deduction applies to the associated charges.",
+      "owner": "insurer",
       "exposure_calculation": {
         "days": 3,
         "excess_room_rent": 7500,
         "associated_medical_expenses": 49100,
         "eligible_to_actual_ratio": 0.6667,
         "proportionate_reduction": 16366.67,
-        "note": "Informational estimate under clause 4.1 and 1.4 of this synthetic policy; not a coverage decision."
-      },
-      "fix": "Ask the insurer whether proportionate deduction applies to the associated charges.",
-      "owner": "insurer"
+        "exposure": 23867,
+        "note": "Informational estimate under this synthetic policy's own wording; not a coverage decision."
+      }
     },
     {
       "id": "B-F5",
@@ -590,8 +591,8 @@
     "Policy number and member ID agree across policy, bill and discharge summary",
     "Line items add up to the bill total (85000)",
     "Receipt amount equals the bill total",
-    "All required documents for a reimbursement claim are present (policy, final bill, itemised bill, discharge summary, receipt)",
-    "No waiting-period conflict (diagnosis well after the 30-day initial waiting period)"
+    "All required documents for a reimbursement claim are present",
+    "No waiting-period conflict found"
   ],
   "expected_checklist": {
     "required_present": [
@@ -609,10 +610,10 @@
   "expected_readiness": "needs_attention",
   "expected_packet_status": "INCOMPLETE - 3 blocking items",
   "demo_fix_sequence": [
-    "Edit the claimed amount from 95000 to 85000 (resolves B-F1)",
-    "Remove claim_b_final_bill_copy.pdf (resolves B-F2)",
-    "Upload claim_b_prescription_RX-7781.pdf (resolves B-F3)",
-    "Re-check: blocking items drop to 0; B-F4 and B-F5 remain as items to review; packet becomes 'Prepared for submission'"
+    "Edit the claimed amount from 95000 to 85000",
+    "Remove claim_b_final_bill_copy.pdf",
+    "Upload claim_b_prescription_RX-7781.pdf",
+    "Re-check: blocking items drop to 0; the rest stay as items to review"
   ],
   "after_fix": {
     "expected_packet_status": "Prepared for submission",

@@ -102,20 +102,6 @@ function DocumentEvidence({ claimId, evidence }: { claimId: string; evidence: Ev
       {current ? (
         <>
           <EvidencePage key={`${current.document_id}-${current.page_number}-${current.quote}`} claimId={claimId} evidence={current} />
-          {current.quote && (
-            <p className="space-y-0.5 rounded-md bg-muted/50 p-2 text-xs">
-              {current.field && (
-                <span className="block">
-                  <span className="text-muted-foreground">{t("Extracted field")}: </span>
-                  <strong>{current.field.replace(/_/g, " ")}</strong>
-                </span>
-              )}
-              <span className="block">
-                <span className="text-muted-foreground">{t("Text cited")}: </span>
-                {current.quote}
-              </span>
-            </p>
-          )}
         </>
       ) : (
         others.length === 0 && <p className="text-sm text-muted-foreground">{t("No document page is attached to this finding.")}</p>
@@ -151,7 +137,6 @@ function PolicyEvidence({ claimId, links, clauses }: { claimId: string; links: C
           <p className="whitespace-pre-line rounded-md border bg-muted/30 p-2 text-xs leading-relaxed">
             <Marked text={c.text} quote={l.quote} />
           </p>
-          <p className="text-xs text-muted-foreground">{t("Highlighted words are quoted verbatim from the policy.")}</p>
           <Button size="xs" variant="outline" onClick={() => setOpenPage(openPage === c.id ? null : c.id)}>
             <FileText /> {openPage === c.id ? t("Hide policy page") : t("Show policy page")}
           </Button>
@@ -171,7 +156,7 @@ function PolicyEvidence({ claimId, links, clauses }: { claimId: string; links: C
 
 function ActionBlock({ a, owner }: { a: Action; owner: string }) {
   const { t } = useI18n();
-  const [title, why, draft, ...how] = useLocalized([a.title, a.why, a.draft_message ?? "", ...a.how]);
+  const [title, , draft, ...how] = useLocalized([a.title, a.why, a.draft_message ?? "", ...a.how]);
   return (
     <div className="space-y-1.5 rounded-md border p-2">
       <div className="flex flex-wrap items-center gap-1.5">
@@ -180,7 +165,6 @@ function ActionBlock({ a, owner }: { a: Action; owner: string }) {
         {a.blocking && <Badge variant="destructive">{t("Blocking")}</Badge>}
         {a.done && <Badge variant="secondary">{t("Done")}</Badge>}
       </div>
-      <p className="text-xs text-muted-foreground">{why}</p>
       {how.length > 0 && (
         <ol className="list-decimal space-y-0.5 pl-5 text-xs">
           {how.map((h, i) => (
@@ -202,8 +186,8 @@ function IssueAndAction({ finding, actions }: { finding: Finding; actions: Actio
   const { t } = useI18n();
   const OWNER = { user: t("You"), hospital: t("Hospital"), doctor: t("Doctor"), insurer: t("Insurer") } as const;
   const SEVERITY = { high: t("High severity"), medium: t("Medium severity"), low: t("Low severity") } as const;
-  const [title, description, rule, why, assumptionL] = useLocalized([
-    finding.title, finding.description, finding.explanation.rule, finding.explanation.why_it_matters,
+  const [title, description, rule, assumptionL] = useLocalized([
+    finding.title, finding.description, finding.explanation.rule,
     String((finding.explanation.inputs as Record<string, unknown>).assumption ?? ""),
   ]);
   const { assumption, ...inputs } = finding.explanation.inputs as Record<string, unknown>;
@@ -213,7 +197,6 @@ function IssueAndAction({ finding, actions }: { finding: Finding; actions: Actio
       <div className="space-y-1.5">
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant={finding.severity === "high" ? "destructive" : "secondary"}>{SEVERITY[finding.severity]}</Badge>
-          <Badge variant="outline">{finding.kind === "confirmed" ? t("Confirmed mismatch") : t("Possible, please review")}</Badge>
           {finding.blocking && <Badge variant="destructive">{t("Blocks the packet")}</Badge>}
         </div>
         <p className="text-sm font-medium">{title}</p>
@@ -225,13 +208,13 @@ function IssueAndAction({ finding, actions }: { finding: Finding; actions: Actio
         )}
       </div>
 
-      <div className="space-y-1.5">
-        <p className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+      <details className="rounded-md border p-2 text-xs">
+        <summary className="flex cursor-pointer items-center gap-1.5 font-medium text-muted-foreground">
           <Scale className="size-3.5" aria-hidden /> {t("How Covara checked it")}
-        </p>
-        <p className="text-sm">{rule}</p>
+        </summary>
+        <p className="mt-2 text-sm">{rule}</p>
         {rows.length > 0 && (
-          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-md bg-muted/40 p-2 text-xs">
+          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
             {rows.map(([k, v]) => (
               <div key={k} className="contents">
                 <dt className="text-muted-foreground">{k.replace(/_/g, " ")}</dt>
@@ -240,9 +223,8 @@ function IssueAndAction({ finding, actions }: { finding: Finding; actions: Actio
             ))}
           </dl>
         )}
-        {typeof assumption === "string" && <p className="text-xs text-muted-foreground">{assumptionL}</p>}
-        {finding.explanation.why_it_matters && <p className="text-xs">{why}</p>}
-      </div>
+        {typeof assumption === "string" && <p className="mt-2 text-muted-foreground">{assumptionL}</p>}
+      </details>
 
       <div className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{t("What to do next")}</p>

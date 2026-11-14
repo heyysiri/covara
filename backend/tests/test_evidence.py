@@ -137,3 +137,15 @@ def test_slightly_reworded_quote_still_highlights_when_most_of_it_matches(client
                 "Rs. 5,00,000). If the Insured opts for a room with a daily rent higher than this cap, the excess "
                 "room rent is not payable")
     assert client.get(url(cid, did, 4), params={"highlight": reworded}).headers["x-highlights-found"] == "1"
+
+
+def test_focus_returns_a_readable_close_up_around_the_highlight(client):
+    cid, did = upload(client, POLICY)
+    whole = client.get(url(cid, did, 4), params={"highlight": CLAUSE_41})
+    close = client.get(url(cid, did, 4), params={"highlight": CLAUSE_41, "focus": "true"})
+    assert close.status_code == 200 and close.headers["x-focused"] == "1" and close.headers["x-highlights-found"] == "1"
+    (ww, wh), (cw, ch) = png_size(whole.content), png_size(close.content)
+    assert ch < wh / 2  # a band, not the whole page
+    # no highlight to centre on -> the whole page, not an arbitrary crop
+    none = client.get(url(cid, did, 4), params={"highlight": "not on this page at all", "focus": "true"})
+    assert none.headers["x-focused"] == "0" and png_size(none.content) == (ww, wh)

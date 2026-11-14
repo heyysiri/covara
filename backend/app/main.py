@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.routes import claims, health
+import asyncio
 import re
 
 from app.config import get_settings
@@ -28,10 +29,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+async def _expiry_loop() -> None:
+    """Delete claims past the retention period, every 15 minutes, so the promise holds even if nobody starts a new claim."""
+    while True:
+        await asyncio.sleep(900)
+        try:
+            persistence.expire_old()
+        except Exception:  # never let the sweep stop
+            pass
+
+
 @app.on_event("startup")
-def restore_claims() -> None:
+async def restore_claims() -> None:
     persistence.load_all()
     persistence.expire_old()
+    app.state.expiry_task = asyncio.create_task(_expiry_loop())
 
 
 _CLAIM_PATH = re.compile(r"^/claims/([0-9a-f]{32})(?:/|$)")

@@ -89,8 +89,8 @@ export function ExtractedData({
                 {doc.status === "failed"
                   ? docErrorsL[di]
                   : doc.pages === 1
-                    ? t("1 page · read by {method}", { method: doc.extraction_method ?? "—" })
-                    : t("{n} pages · read by {method}", { n: doc.pages, method: doc.extraction_method ?? "—" })}
+                    ? t("1 page")
+                    : t("{n} pages", { n: doc.pages })}
               </span>
             </header>
             {fields.length === 0 ? (

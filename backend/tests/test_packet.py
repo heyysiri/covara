@@ -189,3 +189,30 @@ def test_nothing_is_generated_before_the_analysis_completes(analysed):
         r = client.get(f"/claims/{cid}/{path}")
         assert r.status_code == 409 and "analysis" in r.json()["detail"].lower()
     assert client.get("/claims/nope/report").status_code == 404
+
+
+# ---------------------------------------------------------------- Hindi report
+def test_hindi_report_is_a_real_pdf_with_devanagari_and_untranslated_facts(analysed, monkeypatch):
+    from app.core import sarvam
+
+    monkeypatch.setattr(sarvam, "available", lambda: True)
+    monkeypatch.setattr(sarvam, "translate", lambda text, target, source="en-IN": (f"हिंदी {text}" if text.isascii() else text, True))
+    client, cid = analysed
+    r = client.get(f"/claims/{cid}/report?lang=hi-IN")
+    assert r.status_code == 200 and r.content[:5] == b"%PDF-"
+    text = "\n".join(pdf_pages(r.content))
+    with pymupdf.open("pdf", r.content) as d:  # shaped Devanagari does not round-trip through text extraction: check the font instead
+        fonts = {f[3] for pg in d for f in pg.get_fonts()}
+    assert any("Devanagari" in f for f in fonts), fonts
+    flat = "".join(text.split())  # ignore line wraps
+    for needle in ("INV-2026-08-10457", "95,000"):
+        assert needle in flat, needle
+
+
+def test_hindi_report_refuses_instead_of_shipping_english_when_translation_is_down(analysed, monkeypatch):
+    from app.core import sarvam
+
+    monkeypatch.setattr(sarvam, "available", lambda: False)
+    client, cid = analysed
+    assert client.get(f"/claims/{cid}/report?lang=hi-IN").status_code == 503
+    assert client.get(f"/claims/{cid}/report?lang=xx-XX").status_code == 422

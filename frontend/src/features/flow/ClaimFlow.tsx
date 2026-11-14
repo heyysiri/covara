@@ -250,6 +250,11 @@ export function ClaimFlow({ initialAmount, source }: { initialAmount?: string; s
           onResults={analysis.setResults}
           onAddDocuments={() => setStep("documents")}
           onDeleted={startOver}
+          claimedAmount={amount !== null && !Number.isNaN(amount) ? amount : null}
+          onSaveAmount={async (n) => {
+            await updateClaim(claimId, { claimed_amount: n });
+            setDetails((d) => ({ ...d, amount: n === null ? "" : String(n) }));
+          }}
         />
       )}
     </AppShell>

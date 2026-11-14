@@ -33,6 +33,7 @@ class Rendered:
     highlights_found: int  # quotes located in the text layer
     bbox_highlights: int  # boxes drawn from stored coordinates because a quote was not found
     page_count: int
+    focused: bool = False  # the image is a close-up around the highlight, not the whole page
 
 
 def _norm(text: str) -> str:
@@ -64,7 +65,7 @@ def locate(page: pymupdf.Page, quote: str) -> list[pymupdf.Rect]:
     return [r for h in hits for r in h]
 
 
-def render_page(path: Path, page_number: int, quotes: list[str], bboxes: list[list[float]], dpi: int = 110) -> Rendered:
+def render_page(path: Path, page_number: int, quotes: list[str], bboxes: list[list[float]], dpi: int = 110, focus: bool = False) -> Rendered:
     with pymupdf.open(path) as src:  # PDFs and single images both open as documents
         # drawing needs a PDF; a scanned image is wrapped into a one-page PDF in memory
         doc = src if src.is_pdf else pymupdf.open("pdf", src.convert_to_pdf())
@@ -72,10 +73,12 @@ def render_page(path: Path, page_number: int, quotes: list[str], bboxes: list[li
             raise PageOutOfRange(page_number, doc.page_count)
         page = doc[page_number - 1]
         located = 0
+        marked: list[pymupdf.Rect] = []
         for q in quotes:
             rects = locate(page, q)
             if rects:
                 located += 1
+                marked += rects
                 annot = page.add_highlight_annot(rects)
                 annot.set_colors(stroke=_YELLOW)
                 annot.update()
@@ -83,7 +86,19 @@ def render_page(path: Path, page_number: int, quotes: list[str], bboxes: list[li
         if located < len(quotes) or not quotes:
             w, h = page.rect.width, page.rect.height
             for x0, y0, x1, y1 in bboxes:
-                page.draw_rect(pymupdf.Rect(x0 * w, y0 * h, x1 * w, y1 * h), color=_YELLOW, width=2.5)
+                box = pymupdf.Rect(x0 * w, y0 * h, x1 * w, y1 * h)
+                page.draw_rect(box, color=_YELLOW, width=2.5)
+                marked.append(box)
                 drawn += 1
+        if focus and marked:
+            # Close-up for small screens: the highlight with some context, at least ~300pt wide so the text is readable.
+            union = pymupdf.Rect(marked[0])
+            for r in marked[1:]:
+                union |= r
+            cx = (union.x0 + union.x1) / 2
+            half_w = max((union.width / 2) + 24, 150)
+            clip = pymupdf.Rect(cx - half_w, union.y0 - 70, cx + half_w, union.y1 + 70) & page.rect
+            pix = page.get_pixmap(dpi=int(dpi * 1.6), annots=True, clip=clip)
+            return Rendered(pix.tobytes("png"), located, drawn, doc.page_count, focused=True)
         pix = page.get_pixmap(dpi=dpi, annots=True)
         return Rendered(pix.tobytes("png"), located, drawn, doc.page_count)

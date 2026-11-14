@@ -12,6 +12,9 @@ from app.services import claim_store
 from .claim_json import build_claim_json
 from .packet import build_packet
 from .report import build_report
+from .report_i18n import TranslationUnavailable, build_report_translated
+
+SUPPORTED_REPORT_LANGS = {"hi-IN"}
 
 router = APIRouter(prefix="/claims", tags=["packet"])
 
@@ -32,8 +35,16 @@ def _pdf(data: bytes, filename: str) -> Response:
 
 
 @router.get("/{claim_id}/report")
-def get_report(claim_id: str) -> Response:
+def get_report(claim_id: str, lang: str = "en-IN") -> Response:
+    """Built fresh from the current results every time it is requested (nothing is stored)."""
     claim, results = _ready(claim_id)
+    if lang != "en-IN":
+        if lang not in SUPPORTED_REPORT_LANGS:
+            raise HTTPException(status_code=422, detail="Unsupported language for the report.")
+        try:
+            return _pdf(build_report_translated(claim, results, lang), f"covara-report-{claim.id[:8]}-{lang[:2]}.pdf")
+        except TranslationUnavailable:
+            raise HTTPException(status_code=503, detail="The translated report is unavailable right now. Try again, or download it in English.")
     return _pdf(build_report(claim, results), f"covara-report-{claim.id[:8]}.pdf")
 
 

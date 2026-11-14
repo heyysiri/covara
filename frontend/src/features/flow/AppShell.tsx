@@ -88,8 +88,8 @@ export function AppShell({
 /** Fixed action bar at the bottom of a phone screen; an ordinary right-aligned action row on desktop. */
 export function BottomBar({ children }: { children: ReactNode }) {
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[480px] border-t bg-card/95 px-4 pt-3 shadow-[0_-4px_16px_rgba(0,46,110,0.08)] backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))] md:static md:max-w-none md:border-0 md:bg-transparent md:px-6 md:pb-12 md:pt-0 md:shadow-none md:backdrop-blur-none">
-      <div className="md:ml-auto md:max-w-xs">{children}</div>
+    <div className="fixed inset-x-0 bottom-0 z-40 mx-auto w-full max-w-[480px] border-t bg-card/95 px-4 pt-3 shadow-[0_-4px_16px_rgba(0,46,110,0.08)] backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))] md:static md:max-w-none md:border-0 md:bg-transparent md:px-6 md:pb-14 md:pt-6 md:shadow-none md:backdrop-blur-none">
+      <div className="md:mx-auto md:max-w-sm">{children}</div>
     </div>
   );
 }
