@@ -98,3 +98,34 @@ export function uploadDocuments(claimId: string, category: DocumentCategory, fil
   files.forEach((f) => form.append("files", f));
   return request<UploadResponse>(`/claims/${claimId}/documents`, { method: "POST", body: form });
 }
+
+// ---- language + voice (Sarvam) ---------------------------------------------------------------
+
+/** Plain-language summary of the analysis in the chosen language; `speech` is what gets read aloud. */
+export interface ClaimSummary {
+  headline: string;
+  speech: string;
+  lang: string;
+  translated: boolean;
+}
+
+export const getSummary = (claimId: string, lang: string) =>
+  request<ClaimSummary>(`/claims/${claimId}/summary?lang=${encodeURIComponent(lang)}`);
+
+export const getVoiceInfo = () => request<{ languages: Record<string, string>; sarvam: boolean }>("/speech/languages");
+
+/** Spoken version of `text` (mp3) from the backend. */
+export async function fetchSpeech(text: string, lang: string): Promise<Blob> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_URL}/speech/tts`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, lang }),
+    });
+  } catch {
+    throw new ApiError(`Cannot reach the Covara backend at ${API_URL}`, 0);
+  }
+  if (!res.ok) throw new ApiError("Could not create the voice reply.", res.status);
+  return res.blob();
+}

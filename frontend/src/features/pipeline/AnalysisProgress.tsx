@@ -1,8 +1,12 @@
+"use client";
+
 import { CheckCircle2, Circle, Loader2 } from "lucide-react";
 
+import { useLocalized } from "@/i18n";
 import type { AnalysisResults } from "@/types/results";
 
 export function AnalysisProgress({ results }: { results: AnalysisResults }) {
+  const labels = useLocalized(results.stages);
   const total = results.stages.length || 1;
   const doneCount = Math.round(results.progress * total);
   return (
@@ -25,7 +29,7 @@ export function AnalysisProgress({ results }: { results: AnalysisResults }) {
               ) : (
                 <Circle className="size-4 text-muted-foreground/50" aria-hidden />
               )}
-              <span className={state === "todo" ? "text-muted-foreground" : ""}>{label}</span>
+              <span className={state === "todo" ? "text-muted-foreground" : ""}>{labels[i]}</span>
             </li>
           );
         })}

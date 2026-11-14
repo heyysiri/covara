@@ -250,7 +250,8 @@ def test_gemini_path_with_stub(client, docs, monkeypatch):
         calls_made.append(schema.__name__)
         return json.dumps({"fields": [
             {"key": "bill_total", "value": "Rs. 85,000", "page": 1, "quote": "Total Payable: Rs. 85,000", "confidence": 0.95},
-            {"key": "patient_name", "value": "Rajesh Kumaar", "page": 1, "quote": "invented text not on page", "confidence": 0.9},
+            {"key": "patient_name", "value": "Nobody Atall", "page": 1, "quote": "invented text not on page", "confidence": 0.9},
+            {"key": "hospital_name", "value": "City Care Hospital, Pune", "page": 1, "quote": "Hospital: City Care Hospital, Pune", "confidence": 0.9},
             {"key": "line_item", "value": "Pharmacy | 9,000", "page": 1, "quote": "Pharmacy   9,000", "confidence": 0.9},
             {"key": "not_a_key", "value": "x", "page": 1, "quote": "x", "confidence": 1},
         ]})
@@ -263,7 +264,9 @@ def test_gemini_path_with_stub(client, docs, monkeypatch):
     by = {f.key: f for f in fields}
     assert method == "gemini+rules"
     assert by["bill_total"].value == 85000 and by["bill_total"].confidence == 0.95
-    assert by["patient_name"].confidence <= 0.5  # quote not found on page -> forced review
+    assert by["patient_name"].confidence <= 0.5  # neither the quote nor the value is on the page -> forced review
+    # wrong label in the quote, but the value is on the page: cite the value, keep the model's confidence
+    assert by["hospital_name"].confidence == 0.9 and by["hospital_name"].evidence.quote == "City Care Hospital, Pune"
     assert "not_a_key" not in by
     assert by["admission_date"].method == "rules"  # topped up
     assert [f.value for f in fields if f.key == "line_item"] == [9000]

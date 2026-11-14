@@ -6,6 +6,7 @@ import re
 
 from app.config import get_settings
 from app.core import persistence
+from app.modules.language.router import router as language_router
 from app.modules.evidence.router import router as evidence_router
 from app.modules.intake.router import router as intake_router
 from app.modules.packet.router import router as packet_router
@@ -54,5 +55,6 @@ app.include_router(health.router)
 app.include_router(claims.router)
 app.include_router(intake_router)
 app.include_router(pipeline_router)
+app.include_router(language_router)
 app.include_router(evidence_router)
 app.include_router(packet_router)

@@ -1,21 +1,32 @@
+"use client";
+
 import { FileText } from "lucide-react";
 
+import { useI18n } from "@/i18n";
 import { documentFileUrl } from "@/lib/api";
 import type { EvidenceRef } from "@/types/results";
 
 /** Opens the original document at the cited page (browser PDF viewer supports #page=N). */
 export function EvidenceLink({ claimId, evidence }: { claimId: string; evidence: EvidenceRef }) {
-  if (evidence.source !== "document" || !evidence.document_id)
+  const { t } = useI18n();
+  if (evidence.source !== "document" || !evidence.document_id) {
+    const claimFormFields: Record<string, string> = {
+      claimed_amount: t("claimed amount"),
+      patient_name: t("patient name"),
+    };
+    const fieldLabel = evidence.field ? (claimFormFields[evidence.field] ?? evidence.field.replace(/_/g, " ")) : "";
+    const value = evidence.value;
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <FileText className="size-3" aria-hidden />
-        {evidence.source === "checklist" ? "Document checklist" : "Claim form"}
-        {evidence.field ? ` · ${evidence.field.replace(/_/g, " ")}` : ""}
-        {evidence.value != null
-          ? `: ${Array.isArray(evidence.value) ? evidence.value.join(", ") : typeof evidence.value === "number" ? evidence.value.toLocaleString("en-IN") : evidence.value}`
+        {evidence.source === "checklist" ? t("Document checklist") : t("Claim form")}
+        {fieldLabel ? ` · ${fieldLabel}` : ""}
+        {value != null
+          ? `: ${Array.isArray(value) ? value.join(", ") : typeof value === "number" ? value.toLocaleString("en-IN") : value}`
           : ""}
       </span>
     );
+  }
   return (
     <a
       href={`${documentFileUrl(claimId, evidence.document_id)}#page=${evidence.page_number}`}
@@ -25,7 +36,7 @@ export function EvidenceLink({ claimId, evidence }: { claimId: string; evidence:
       title={evidence.quote ?? undefined}
     >
       <FileText className="size-3" aria-hidden />
-      {evidence.filename} · p.{evidence.page_number}
+      {evidence.filename} · {t("p.{n}", { n: evidence.page_number ?? "" })}
     </a>
   );
 }
