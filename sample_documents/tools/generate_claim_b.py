@@ -670,6 +670,41 @@ def _evidence_ref(e: dict) -> dict:
             "bbox": None, "quote": None, "field": e["field"], "value": e["value"]}
 
 
+SUMMARY_CHECKS: list[tuple[str, int, str]] = []  # (file, page, quote) verified against the PDF in verify()
+
+
+def _sv(value, text: str, page: int, quote: str) -> dict:
+    """A SummaryValue in the shape the real API returns: value, human text, evidence."""
+    SUMMARY_CHECKS.append((F_POLICY, page, quote))
+    return {"value": value, "text": text, "evidence": _evidence_ref({"file": F_POLICY, "page": page, "quote": quote})}
+
+
+def _policy_summary() -> dict:
+    """Same shape as the pipeline's PolicySummary, so frontend and rule tests can use the fixture directly."""
+    def wp(name: str, days: int, page: int, quote: str) -> dict:
+        SUMMARY_CHECKS.append((F_POLICY, page, quote))
+        return {"name": name, "days": days, "evidence": _evidence_ref({"file": F_POLICY, "page": page, "quote": quote})}
+
+    return {
+        "sum_insured": _sv(SUM_INSURED, f"Rs. {inr(SUM_INSURED)}", 1, f"Rs. {inr(SUM_INSURED)}"),
+        "room_rent_cap": _sv(ROOM_CAP_PER_DAY, f"1% of Sum Insured per day (Rs. {inr(ROOM_CAP_PER_DAY)} per day)", 4,
+                             "Room rent is payable up to 1% of the Sum Insured per day"),
+        "room_rent_cap_percent": 1.0,
+        "copay": _sv(0, "Nil", 4, "No co-payment applies under this policy"),
+        "pre_hosp_days": _sv(30, "30 days before admission", 3, "up to 30 days before admission"),
+        "post_hosp_days": _sv(60, "60 days after discharge", 3, "up to 60 days after discharge"),
+        "waiting_periods": [
+            wp("Initial waiting period", 30, 5, "Claims arising within 30 days from the first policy inception date are not payable"),
+            wp("Pre-existing diseases", 1094, 5, "Pre-existing diseases are covered only after 36 months of continuous coverage"),
+            wp("Specified conditions", 730, 5, "Cataract, hernia, hysterectomy and joint replacement are covered only after 24 months of continuous coverage"),
+        ],
+        "exclusions": [
+            _sv(None, "Cosmetic treatment", 6, "Cosmetic or plastic surgery unless required after an accident or cancer"),
+            _sv(None, "Dental treatment unless accident", 6, "Dental treatment unless arising from an accident"),
+        ],
+    }
+
+
 def build_results_fixture(exp: dict) -> dict:
     """AnalysisResults-shaped mock (section 4 of docs/DIVISION_OF_WORK.md). Used by the frontend and pipeline stubs."""
     fields = []
@@ -753,14 +788,7 @@ def build_results_fixture(exp: dict) -> dict:
         "fields": fields,
         "findings": findings,
         "clauses": clauses,
-        "policy_summary": {
-            "sum_insured": {"value": SUM_INSURED, "evidence": _evidence_ref({"file": F_POLICY, "page": 1, "quote": f"Rs. {inr(SUM_INSURED)}"})},
-            "room_rent_cap": {"value": ROOM_CAP_PER_DAY, "evidence": _evidence_ref({"file": F_POLICY, "page": 4, "quote": "Room rent is payable up to 1% of the Sum Insured per day"})},
-            "copay": {"value": 0, "evidence": _evidence_ref({"file": F_POLICY, "page": 4, "quote": "No co-payment applies under this policy"})},
-            "waiting_periods": [{"label": "Initial", "days": 30, "clause_id": "c-5.1"}, {"label": "Pre-existing", "months": 36}, {"label": "Specified conditions", "months": 24}],
-            "exclusions": ["Cosmetic treatment", "Dental treatment unless accident", "Non-medical expenses"],
-            "pre_hosp_days": 30, "post_hosp_days": 60,
-        },
+        "policy_summary": _policy_summary(),
         "action_plan": actions,
         "checks_passed": exp["expected_checks_passed"],
         "checklist": exp["expected_checklist"],
@@ -800,6 +828,10 @@ def main() -> int:
     fx_out.write_text(json.dumps(fixture, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
     errors = verify(exp)
+    for file, page, quote in SUMMARY_CHECKS:
+        with pymupdf.open(ROOT / file) as d:
+            if _norm(quote) not in _norm(d[page - 1].get_text()):
+                errors.append(f"policy summary quote not found on {file} p.{page}: {quote!r}")
     # every action must name a finding (invariant I3) and every finding must carry evidence (I1)
     for a in fixture["action_plan"]:
         if not a["finding_ids"]:

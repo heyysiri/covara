@@ -3,7 +3,11 @@
 Shared status board for **Person 1** and **Person 2**. Read this before you start work; update it with every change.
 Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, phases, handoffs H1-H9, contract). Original plan: [PLAN.md](PLAN.md).
 
-**Last updated:** 2026-11-14 by Person 1 (verification engine now wired into the pipeline; all merged to `main`)
+**Last updated:** 2026-11-14 by Person 2 (V10/V11, evidence viewer, Findings + Packet tabs, report/packet/claim.json, de-hardcoding pass)
+
+## Ownership change (2026-11-14)
+
+The user now drives **both Person 1's and Person 2's remaining backend/AI work** (with Claude). The teammate (Person 1) now owns: **language translation and voice with Sarvam AI, and the frontend UI**. If something the teammate needs is blocked on backend work, the user's side does it. Sarvam Vision document scanning (W5) was not named in the handoff; treat it as the user's side unless the teammate says they are taking it. After each chunk is finished the user verifies it before the next one starts.
 
 ## How to use this file
 
@@ -15,7 +19,7 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 
 ## Current phase
 
-**Person 1 modules are built and Person 2's verification engine is wired in.** The full claim B demo path works end to end with Claude: upload -> analyse -> 3 blocking findings + 1 to review -> fix sequence -> Re-check -> "Prepared for submission" (measured below). Still missing for the demo: V10 (room-rent exposure) and V11 (waiting period) rules, the Findings/Evidence/Packet tabs, and the report PDF (all Person 2). Next joint milestone: G3 (evidence viewer + policy clause on a finding).
+**Person 1 modules are built and Person 2's verification engine is wired in.** The full claim B demo path works end to end with Claude: upload -> analyse -> 3 blocking findings + 1 to review -> fix sequence -> Re-check -> "Prepared for submission" (measured below). **Person 2 has now added** V10 + V11, the highlighted evidence viewer, the Findings and Claim packet tabs, and the report / packet / `claim.json` (see change log). With the real model, claim B now yields all 5 planted findings with the ₹23,867 exposure estimate, and the demo fix sequence flips the packet to "Prepared for submission". Next: claims A and C, Sarvam document, a browser walkthrough of the new tabs.
 
 ## Task board
 
@@ -53,10 +57,11 @@ Plan lives in [docs/DIVISION_OF_WORK.md](docs/DIVISION_OF_WORK.md) (modules, pha
 | Task | Owner | Status |
 |---|---|---|
 | Verification rules V1-V5, V7, V14 with unit tests | P2 | **done and wired into the pipeline** (`8dfba15`; adapter by P1) | Runs in the `verify` node on every analysis. |
-| Verification rules V10 (room-rent exposure), V11 (waiting period) | P2 | todo | `PolicySummary` is now available from P1 (`ctx.policy_summary`). |
+| Verification rules V10 (room-rent exposure), V11 (waiting period) | P2 | **done** | V10 matches ground truth (₹23,867) on the real pipeline. V11 is unit-tested and passes on claim B (no conflict); there is no claim that triggers it until claim C exists. |
 | Upload accepts a folder or a .zip | P2 (requested by user) | **done** (`e28637e`) | Client-side unzip; merged with P1's claim form/consent/documents list. |
-| Workspace shell + tabs (Findings, Evidence viewer, Packet) | P2 | todo (`AnalysisView` accepts `extraTabs`) |
-| Report + claim packet + `claim.json` | P2 | todo (`GET /claims/{id}/report` still returns 501) |
+| Evidence viewer ("Why was this flagged?"): highlighted page image endpoint + 3-column panel | P2 | **done** | `GET /claims/{id}/documents/{doc_id}/pages/{n}/image?highlight=…&bbox=…`. Server-rendered with real data; not yet clicked through in a browser. |
+| Findings tab + Claim packet tab (via `extraTabs`) | P2 | **done** | Findings opens first. |
+| Report + claim packet + `claim.json` | P2 | **done** | `GET /report`, `/packet`, `/packet.json`. Packet is stamped INCOMPLETE on every page while blocking items are open. |
 
 ## Measured results (claim B, ground truth by P2)
 
@@ -73,7 +78,7 @@ Run: `cd backend && .venv/bin/python -m tests.eval_claim_b` (add `--rules` for o
 | After fix sequence + Re-check | **Prepared for submission** (only the name variant left open) | still INCOMPLETE (false V4 alarm) |
 | Time | ~1 min first analysis, ~1 min for the re-check including one new document | ~1 s |
 
-Not covered: B-F4 (V10 room-rent exposure, rule not written yet), V11, claims A and C (not made yet), handwritten/Indic documents, scanned images. The no-AI path is a fallback only and is not demo quality. Model: Claude through the Claude Code session; speed will differ on the real API.
+Not covered: V11 on a claim that triggers it, claims A and C (not made yet), handwritten/Indic documents, scanned images. The no-AI path is a fallback only and is not demo quality. Model: Claude through the Claude Code session; speed will differ on the real API.
 
 ## Handoffs
 
@@ -103,6 +108,13 @@ Not covered: B-F4 (V10 room-rent exposure, rule not written yet), V11, claims A 
 9. **Packet status:** today `packet_status` counts blocking findings plus missing blocking uploads; replace it with your own once the packet generator exists.
 10. **Frontend:** the panels are in `frontend/src/features/*`; `AnalysisView` takes `extraTabs` for Findings / Evidence / Packet. The `EvidenceLink` component opens the original PDF at the cited page.
 
+**For Person 1, from Person 2 (2026-11-14, second batch) - these touch your files, please pull before editing them:**
+P2-11. **What `verify_adapter.py` now passes to the engine** (my small edits to your file): `PolicyFacts` (room-rent cap per day, waiting periods, and the policy's own definition of "associated expenses" found among `ctx.clauses`), and `required_documents` taken from **your checklist** (items that are required and not merely referenced), so there is one place that decides which documents a claim needs. Your `RULE_ROUTING` and clause topics for V10/V11 worked unchanged.
+P2-15. **De-hardcoding pass (per the user's request: only the data is synthetic).** Audit result: no claim B facts in product code, but I had duplicated things you own and tuned V10 to the sample bill. Fixed: V10 no longer uses keyword lists; it reads which bill lines are "associated expenses" from the uploaded policy's own definition (and estimates only the excess room rent when the policy has none); critical fields and the review threshold now come from `schemas/results.py`; required documents from `intake/checklist.py` (new `required_categories()`, which your `build_checklist` now also uses); document labels/order from the checklist; `reference_type()` moved to `app/utils/doc_types.py` (still importable from `extract.py`); tolerances/thresholds live in `verification/config.py`; the packet picks each displayed value by confidence instead of a per-field table; the Packet tab reuses `DOCUMENT_CATEGORIES`. 10 new tests use differently worded policies to prove it. **123 backend tests pass; the real-model eval passes every check.**
+P2-12. **Edits in shared files (all additive):** `main.py` registers two routers (`evidence`, `packet`); `claims.py` loses the old `/report` 501 stub (it would have shadowed the real route); `test_api.py` now expects 409 (not 501) for `/report` before an analysis; `types/results.ts` and `EvidenceLink.tsx` learn the `checklist` evidence source (the backend already had it) and format numbers; `AnalysisView.tsx` lets an extra tab set `first: true` and use a function as its label (Findings opens first, with a count); `DocumentUpload.tsx` passes `extraTabs={buildExtraTabs(claimId)}`; `tests/eval_claim_b.py` now treats V10/V11 as built and checks the exposure.
+P2-13. **Suggestion for extraction (your M2):** add a `policy_inception` key (first-enrolment date). V11 uses it when present and otherwise falls back to the start of the current policy period, which can over-flag renewed policies; the finding says so in plain words and stays "possible, not blocking".
+P2-14. **Observed model variance:** across three real runs of the claim B eval, one run extracted slightly differently (81 fields instead of 80, one low-confidence critical field) and the V10 exposure then did not match ground truth; the other two matched exactly. I did not capture what differed in that run. Warming the cache before the demo replays one consistent extraction.
+
 **How the AI provider works (no API key needed):** the backend uses Claude through the logged-in Claude Code session (`claude -p`), auto-detected; set `ANTHROPIC_API_KEY` to use the Claude API instead. Calls take 10-50 s per document, so analyses take ~1 min; run once to warm the cache (`backend/.cache/`, keyed by file hash) before a demo, and use `DEMO_MODE=true` to replay without calling any model. This path is for local development and demos.
 
 **For Person 1, from Person 2** (raised 2026-11-14; numbered P2-n; status in item 11):
@@ -121,6 +133,7 @@ P2-10. **Heads-up, frontend upload changed (M1 is yours, so pull before editing 
 
 | Date | Who | Change | Commit |
 |---|---|---|---|
+| 2026-11-14 | P2 | **De-hardcoding pass** (see P2-15) folded into the commit below. **V10 + V11 rules** (`PolicyFacts`, estimate labelled as such, stores its assumptions); **evidence page-image endpoint** (PyMuPDF highlight, honest when the quote is not found, never modifies originals; fixed a false-highlight bug found by tests); **Findings tab + "Why was this flagged?" viewer** (document -> policy clause with verified quote -> issue and next step); **Report PDF** (9 sections), **Claim Packet PDF** (cover, index, evidence annex, originals with bookmarks, INCOMPLETE stamp, scanned images become pages), **claim.json**, **Claim packet tab**; claim B fixture `policy_summary` now matches the real API shape; edits to your files listed in P2-11/12. **113 backend tests pass**; lint + tsc clean; real-model eval: all findings incl. V10 exposure pass (one earlier run varied, see P2-14). Not yet clicked through in a browser. | this commit |
 | 2026-11-14 | P1 | **Wired the verification engine into the pipeline** (`verify_adapter.py`): V1-V5, V7, V14 findings now reach clause linking, the action plan and the packet status; `EvidenceRef.source=checklist`; packet blocking count no longer double-counts a V7 finding and its upload action; `referenced_document` keeps the wording as written; `member_id` extracted from discharge summaries. Claim B eval extended with findings and the demo fix sequence: Claude 40/40 fields, 4/4 findings, packet goes INCOMPLETE (3 blocking) -> Prepared for submission; rules-only 22/40. 76 backend tests pass | this commit |
 | 2026-11-14 | P1 | Merged `origin/main` (verification engine, folder/zip upload) into `person1-pipeline`; resolved conflicts in `DocumentUpload.tsx` (kept both sides) and this file | merge commit |
 | 2026-11-14 | P1 | Contract reconciliation with P2's asks: `EvidenceRef.source` (document / claim_form), `checks_passed`, `checklist_summary`, `documents_failed`, `VerificationResult`, `ctx.claim_form_ref`; `DELETE /claims/{id}/documents/{doc_id}` + Remove button; Claim B accuracy eval (`tests/eval_claim_b.py`): Claude 30/30, rules 13/30; fixed table-layout policy parsing; 27 backend tests pass | this branch |

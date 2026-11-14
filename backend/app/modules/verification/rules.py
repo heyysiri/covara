@@ -5,14 +5,15 @@ inputs it compared, carries evidence from BOTH sides of the comparison (I1), and
 `confirmed` (hard mismatch) or `possible` (needs a human) (I5). Wording is "to review":
 never "fraud", never an approval/rejection prediction.
 
-Implemented here: V1, V2, V3, V4, V5, V7, V14.
-Later phases: V10 and V11 (need the policy summary), V8, V12, V6, V9, V13.
+Implemented here: V1, V2, V3, V4, V5, V7, V14, plus the policy-aware V10 (room-rent limit) and
+V11 (waiting period). Later phases: V8, V12, V6, V9, V13.
 """
 
 from __future__ import annotations
 
 from collections import Counter
 from dataclasses import dataclass, field
+import re
 from typing import Callable
 
 from app.schemas.contract import (
@@ -26,28 +27,25 @@ from app.schemas.contract import (
     Severity,
 )
 
+from app.modules.intake.checklist import LABELS, required_categories
+from app.utils.doc_types import reference_type
+
+from .config import DEFAULT_CONFIG, VerificationConfig
 from .helpers import compare_names, money, name_tokens, norm_id, parse_amount, parse_date
+from .policy_facts import PolicyFacts
 
-CRITICAL_KEYS = {
-    "patient_name", "policy_number", "member_id", "admission_date", "discharge_date",
-    "bill_total", "bill_number", "receipt_amount", "sum_insured", "policy_start", "policy_end",
-    "room_rent_cap", "diagnosis_date",
-}
-LOW_CONFIDENCE = 0.75
 
-REQUIRED_DOCS = {
-    "reimbursement": ["policy", "final_bill", "itemised_bill", "discharge_summary", "payment_receipt"],
-    "cashless": ["policy", "final_bill", "itemised_bill", "discharge_summary"],
-}
-DOC_LABEL = {
-    "policy": "policy", "final_bill": "final bill", "itemised_bill": "itemised bill",
-    "discharge_summary": "discharge summary", "payment_receipt": "payment receipt",
-    "prescription": "prescription", "diagnostic_report": "diagnostic report",
-}
+
+def label(doc_type: str) -> str:
+    """Reader-friendly document name, from the same labels the checklist uses."""
+    return LABELS.get(doc_type, doc_type.replace("_", " ")).lower()
+
+
 RULE_NAME = {
     "V1": "Duplicate bill check", "V2": "Patient identity check", "V3": "Policy number / member ID check",
     "V4": "Amount check", "V5": "Date logic check", "V7": "Required and referenced documents check",
     "V14": "Extraction confidence check",
+    "V10": "Room-rent limit check", "V11": "Waiting period check",
 }
 
 
@@ -62,6 +60,9 @@ class Ctx:
     fields: list[ExtractedField]
     documents: list[DocumentInfo]
     claim: ClaimInput
+    policy: PolicyFacts | None = None
+    required_documents: list[str] | None = None
+    cfg: VerificationConfig = DEFAULT_CONFIG
     findings: list[Finding] = field(default_factory=list)
     passed: list[Passed] = field(default_factory=list)
     _counter: Counter = field(default_factory=Counter)
@@ -91,6 +92,7 @@ class Ctx:
         self, rule_id: str, issue_type: str, severity: Severity, kind: FindingKind, blocking: bool,
         title: str, description: str, evidence: list[EvidenceRef], why: str,
         extracted: object = None, comparison: object = None, inputs: dict | None = None,
+        exposure: float | None = None,
     ) -> None:
         self._counter[(rule_id, issue_type)] += 1
         n = self._counter[(rule_id, issue_type)]
@@ -98,7 +100,7 @@ class Ctx:
             Finding(
                 id=f"{rule_id.lower()}-{issue_type}-{n}", rule_id=rule_id, issue_type=issue_type,
                 severity=severity, kind=kind, blocking=blocking, title=title, description=description,
-                evidence=evidence,
+                evidence=evidence, exposure_amount=exposure,
                 extracted_value=None if extracted is None else str(extracted),
                 comparison_value=None if comparison is None else str(comparison),
                 explanation=Explanation(
@@ -151,11 +153,11 @@ def v1_duplicates(c: Ctx) -> None:
             distinct_docs = {f.evidence.document_id for f in fs}
             if len(distinct_docs) > 1:
                 reported = True
-                label = DOC_LABEL[doc_type]
+                kind = label(doc_type)
                 c.add(
                     "V1", "duplicate_bill", Severity.HIGH, FindingKind.CONFIRMED, True,
                     "The same invoice appears in two uploaded files",
-                    f"Invoice {fs[0].value} is in {', '.join(c.filename(f) for f in fs)}. Both are the {label}.",
+                    f"Invoice {fs[0].value} is in {', '.join(c.filename(f) for f in fs)}. Both are the {kind}.",
                     [f.evidence for f in fs], why,
                     extracted=fs[0].value, comparison=fs[1].value,
                     inputs={"invoice_number": fs[0].value, "files": [c.filename(f) for f in fs]},
@@ -208,7 +210,7 @@ def v2_patient_identity(c: Ctx) -> None:
     differing: dict[str, list[ExtractedField]] = {}
     outcomes: dict[str, str] = {}
     for f in names:
-        verdict = compare_names(f.value, ref_name)
+        verdict = compare_names(f.value, ref_name, c.cfg.name_variant_ratio)
         if verdict != "same":
             differing.setdefault(str(f.value), []).append(f)
             outcomes[str(f.value)] = verdict
@@ -275,7 +277,7 @@ def v4_amounts(c: Ctx) -> None:
     # (a) bill total vs the amount the user is claiming
     if total is not None and c.claim.claimed_amount is not None:
         claimed = float(c.claim.claimed_amount)
-        if abs(claimed - total) > 0.5:
+        if abs(claimed - total) > c.cfg.amount_tolerance_inr:
             over = claimed > total
             c.add(
                 "V4", "amount_mismatch", Severity.MEDIUM,
@@ -296,7 +298,7 @@ def v4_amounts(c: Ctx) -> None:
     items = [(f, a) for f, a in items if a is not None]
     if items and total is not None:
         s = sum(a for _, a in items)
-        if abs(s - total) > 1.0:
+        if abs(s - total) > c.cfg.line_item_tolerance_inr:
             c.add(
                 "V4", "line_items_mismatch", Severity.HIGH, FindingKind.CONFIRMED, True,
                 "Line items do not add up to the bill total",
@@ -314,7 +316,7 @@ def v4_amounts(c: Ctx) -> None:
     paid = [parse_amount(f.value) for f in receipts]
     if receipts and total is not None and all(p is not None for p in paid):
         s = sum(paid)  # type: ignore[arg-type]
-        if abs(s - total) > 0.5:
+        if abs(s - total) > c.cfg.amount_tolerance_inr:
             c.add(
                 "V4", "receipt_amount_mismatch", Severity.MEDIUM, FindingKind.POSSIBLE, False,
                 "Amount paid differs from the bill total",
@@ -407,48 +409,35 @@ def v5_dates(c: Ctx) -> None:
 # ----------------------------------------------------------------------------------------
 # V7 - required and referenced documents
 # ----------------------------------------------------------------------------------------
-_REFERENCE_TYPES = [
-    ("prescription", "prescription"), ("discharge", "discharge_summary"), ("receipt", "payment_receipt"),
-    ("itemised", "itemised_bill"), ("diagnostic", "diagnostic_report"), ("report", "diagnostic_report"),
-    ("lab", "diagnostic_report"), ("ultrasound", "diagnostic_report"), ("scan", "diagnostic_report"),
-    ("x-ray", "diagnostic_report"), ("xray", "diagnostic_report"), ("mri", "diagnostic_report"),
-]
-
-
-def _reference_type(text: str) -> str | None:
-    t = text.lower()
-    return next((doc_type for needle, doc_type in _REFERENCE_TYPES if needle in t), None)
-
-
 def v7_documents(c: Ctx) -> None:
     present = {d.doc_type for d in c.documents}
-    required = REQUIRED_DOCS.get(c.claim.claim_type, REQUIRED_DOCS["reimbursement"])
+    required = c.required_documents if c.required_documents is not None else required_categories(c.claim.claim_type)
     missing = [t for t in required if t not in present]
     for t in missing:
-        label = DOC_LABEL[t]
+        name = label(t)
         c.add(
             "V7", "missing_required_document", Severity.HIGH, FindingKind.CONFIRMED, True,
-            f"A required document is missing: {label}",
-            f"A {c.claim.claim_type} claim normally needs the {label}, and none was uploaded.",
+            f"A required document is missing: {name}",
+            f"A {c.claim.claim_type} claim normally needs the {name}, and none was uploaded.",
             [EvidenceRef(source="checklist", field=t, value="missing")],
             "Missing documents are one of the most common causes of delay.",
             inputs={"claim_type": c.claim.claim_type, "required": required, "present": sorted(present)},
         )
     if not missing and c.documents:
-        names = ", ".join(DOC_LABEL[t] for t in required)
+        names = ", ".join(label(t) for t in required)
         c.ok("V7", f"All required documents for a {c.claim.claim_type} claim are present ({names})")
 
     refs: dict[str, list[ExtractedField]] = {}
     for f in c.of("referenced_document"):
-        t = _reference_type(str(f.value))
-        if t and t not in present:
+        t = reference_type(str(f.value))
+        if t in LABELS and t not in present:  # only document types Covara knows about
             refs.setdefault(t, []).append(f)
     for t, fs in refs.items():
-        label = DOC_LABEL.get(t, t)
+        name = label(t)
         c.add(
             "V7", "referenced_document_missing", Severity.HIGH, FindingKind.CONFIRMED, True,
-            f"{c.filename(fs[0])} refers to a {label} that was not uploaded",
-            f"{c.filename(fs[0])} mentions '{fs[0].value}', but no {label} was uploaded.",
+            f"{c.filename(fs[0])} refers to a {name} that was not uploaded",
+            f"{c.filename(fs[0])} mentions '{fs[0].value}', but no {name} was uploaded.",
             [f.evidence for f in fs],
             "Documents that other documents refer to are usually expected to be submitted too.",
             extracted=fs[0].value, inputs={"referenced": [f.value for f in fs], "missing_type": t},
@@ -460,17 +449,163 @@ def v7_documents(c: Ctx) -> None:
 # ----------------------------------------------------------------------------------------
 def v14_confidence(c: Ctx) -> None:
     for f in c.fields:
-        if f.key in CRITICAL_KEYS and f.confidence < LOW_CONFIDENCE and not f.user_confirmed:
+        if f.key in c.cfg.critical_keys and f.confidence < c.cfg.low_confidence and not f.user_confirmed:
             c.add(
                 "V14", "low_confidence_field", Severity.LOW, FindingKind.POSSIBLE, False,
                 f"Please confirm the {f.key.replace('_', ' ')}",
                 f"The value '{f.value}' in {c.filename(f)} was read with low confidence ({f.confidence:.2f}).",
                 [f.evidence],
                 "Checks that depend on this value are only as reliable as how well it was read.",
-                extracted=f.value, inputs={"field": f.key, "confidence": f.confidence, "threshold": LOW_CONFIDENCE},
+                extracted=f.value, inputs={"field": f.key, "confidence": f.confidence, "threshold": c.cfg.low_confidence},
             )
+
+
+# ----------------------------------------------------------------------------------------
+# V10 - room-rent limit and proportionate-deduction exposure (informational estimate)
+# ----------------------------------------------------------------------------------------
+def _line_items(c: Ctx) -> list[tuple[ExtractedField, float, str]]:
+    out = []
+    for f in c.of("line_item"):
+        amount = parse_amount(f.value)
+        desc = str(f.raw_text or (f.value.get("description") if isinstance(f.value, dict) else "") or "")
+        if amount is not None:
+            out.append((f, amount, desc))
+    return out
+
+
+def _room_line(items: list[tuple[ExtractedField, float, str]], rate: float, rate_field: ExtractedField):
+    """The bill line for the room itself: the one the room-rate evidence quotes, else the one amount that is a whole
+    number of days at that rate (and only if exactly one line fits)."""
+    quote = re.sub(r"\s+", " ", rate_field.evidence.quote or rate_field.raw_text or "").lower()
+    if quote:
+        hit = next((it for it in items if it[2] and re.sub(r"\s+", " ", it[2]).lower() in quote), None)
+        if hit:
+            return hit
+    whole = [it for it in items if it[1] / rate >= 1 and abs(it[1] / rate - round(it[1] / rate)) < 0.05]
+    return whole[0] if len(whole) == 1 else None
+
+
+def v10_room_rent(c: Ctx) -> None:
+    pol = c.policy
+    if pol is None or pol.room_rent_cap_per_day is None:
+        return
+    rate_fields = c.of("room_rent_charged_per_day")
+    rate = parse_amount(rate_fields[0].value) if rate_fields else None
+    if rate is None or rate <= 0:
+        return
+    cap = float(pol.room_rent_cap_per_day)
+    if rate <= cap + c.cfg.amount_tolerance_inr:
+        c.ok("V10", f"Room rent per day ({money(rate)}) is within the policy limit ({money(cap)})")
+        return
+
+    items = _line_items(c)
+    room = _room_line(items, rate, rate_fields[0])
+    days: float | None = None
+    if room and abs(room[1] / rate - round(room[1] / rate)) < 0.05 and round(room[1] / rate) >= 1:
+        days = float(round(room[1] / rate))  # the room line is a whole number of days at that rate
+    if days is None:
+        adm, dis = _primary_date(c, "admission_date"), _primary_date(c, "discharge_date")
+        if adm and dis and dis[1] > adm[1]:  # type: ignore[operator]
+            days = float((dis[1] - adm[1]).days)  # type: ignore[operator]
+
+    defn = pol.associated_expenses  # what THIS policy calls associated expenses
+    associated = [] if defn is None else [
+        it for it in items if (room is None or it[0] is not room[0]) and defn.classify(it[2]) == "associated"
+    ]
+    associated_total = sum(a for _, a, _ in associated)
+    ratio = cap / rate
+    excess = (rate - cap) * days if days else None
+    reduction = associated_total * (1 - ratio)
+    exposure = round(excess + reduction) if excess is not None else None
+
+    evidence = [rate_fields[0].evidence]
+    if pol.room_rent_cap_evidence:
+        evidence.append(pol.room_rent_cap_evidence)
+    if defn is not None and associated:
+        evidence.append(defn.evidence)
+    detail = (
+        f" As an estimate to review (not a decision), about \u20b9{exposure:,.0f} could be affected: "
+        + ("the excess room rent plus a proportionate reduction on the associated charges the policy defines."
+           if defn is not None else "the excess room rent only, because the policy's definition of associated charges was not found.")
+        if exposure is not None else ""
+    )
+    assumption = (
+        f"Associated charges were identified from the policy's own wording: \"{defn.quote}\". "
+        if defn is not None else
+        "The policy's definition of associated expenses was not found, so only the excess room rent is estimated. "
+    ) + "Your policy wording and the insurer decide what applies; this is only an estimate to review."
+    c.add(
+        "V10", "room_rent_above_cap", Severity.MEDIUM, FindingKind.POSSIBLE, False,
+        "Room rent is above the policy limit; part of the bill may be reduced",
+        f"Room rent was {money(rate)} per day against a policy limit of {money(cap)} per day." + detail,
+        evidence,
+        "If room rent is above the limit, the policy wording may reduce related charges in the same proportion. "
+        "It is worth confirming with the insurer before you submit.",
+        extracted=money(rate), comparison=money(cap),
+        inputs={
+            "room_rent_charged_per_day": rate, "policy_cap_per_day": cap, "days": days,
+            "excess_room_rent": excess, "associated_charges": associated_total,
+            "associated_items": [d for _, _, d in associated], "definition_found": defn is not None,
+            "eligible_to_actual_ratio": round(ratio, 4), "proportionate_reduction": round(reduction, 2),
+            "estimated_exposure": exposure, "assumption": assumption,
+        },
+        exposure=float(exposure) if exposure is not None else None,
+    )
+
+
+# ----------------------------------------------------------------------------------------
+# V11 - waiting period conflict
+# ----------------------------------------------------------------------------------------
+
+
+def _waiting_applies(name: str, quote: str, treatment_text: str, cfg: VerificationConfig) -> bool:
+    n, q = name.lower(), quote.lower()
+    if "initial" in n or re.search(r"(first|within)\s+\d+\s+days", q):
+        return True  # initial waiting periods apply to every illness
+    if "pre-exist" in n or "pre exist" in n:
+        return False  # needs the medical history; cannot be judged from the documents
+    words = {w for w in re.findall(rf"[a-z]{{{cfg.min_condition_word_len},}}", treatment_text) if w not in cfg.condition_stopwords}
+    return any(w in q for w in words)  # specified conditions: only if the policy names this condition
+
+
+def v11_waiting_period(c: Ctx) -> None:
+    pol = c.policy
+    if pol is None or not pol.waiting_periods:
+        return
+    event = _primary_date(c, "diagnosis_date") or _primary_date(c, "admission_date")
+    inception = _primary_date(c, "policy_inception")
+    start = inception or _primary_date(c, "policy_start")
+    if event is None or start is None:
+        return
+    elapsed = (event[1] - start[1]).days  # type: ignore[operator]
+    basis = "first enrolment" if inception else "start of the current policy period"
+    text = " ".join(str(f.value) for f in c.of("diagnosis") + c.of("treatment")).lower()
+
+    hit = [w for w in pol.waiting_periods if 0 <= elapsed < w.days and _waiting_applies(w.name, w.evidence.quote or "", text, c.cfg)]
+    if not hit:
+        c.ok("V11", f"No waiting-period conflict found (treatment began {elapsed} days after the {basis})")
+        return
+    w = max(hit, key=lambda x: x.days)
+    caveat = "" if inception else (
+        " The first-enrolment date was not found, so the start of the current policy period was used; "
+        "if cover has been continuous since earlier, the waiting period may already be over."
+    )
+    c.add(
+        "V11", "waiting_period_conflict", Severity.HIGH, FindingKind.POSSIBLE, False,
+        "The treatment date may fall inside a policy waiting period",
+        f"Treatment started {event[1].isoformat()}, {elapsed} days after the {basis} ({start[1].isoformat()}); "
+        f"the policy lists a {w.name.lower()} of {w.days} days." + caveat
+        + " Accident claims are often exempt from the initial waiting period.",
+        [event[0].evidence, start[0].evidence, w.evidence],
+        "Claims for treatment inside a waiting period may not be payable. Ask the insurer how it applies to you.",
+        extracted=f"{elapsed} days", comparison=f"{w.days} days",
+        inputs={"treatment_date": event[1].isoformat(), "start_date": start[1].isoformat(), "start_basis": basis,
+                "elapsed_days": elapsed, "waiting_period": w.name, "waiting_days": w.days,
+                "other_waiting_periods_matched": [x.name for x in hit if x is not w]},
+    )
 
 
 RULES: list[Callable[[Ctx], None]] = [
     v1_duplicates, v2_patient_identity, v3_policy_ids, v4_amounts, v5_dates, v7_documents, v14_confidence,
+    v10_room_rent, v11_waiting_period,
 ]

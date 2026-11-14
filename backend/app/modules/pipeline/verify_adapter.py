@@ -10,6 +10,8 @@ shapes extracted values the way the engine expects them (see PROGRESS.md):
 from __future__ import annotations
 
 from app.modules.pipeline.context import VerificationContext, VerificationResult
+from app.modules.verification.helpers import parse_amount
+from app.modules.verification.policy_facts import PolicyFacts, WaitingFact, find_associated_expenses
 from app.schemas import contract as c
 from app.schemas.results import Finding
 
@@ -33,6 +35,28 @@ def _fields(ctx: VerificationContext) -> list[c.ExtractedField]:
     return out
 
 
+def _evidence(e) -> c.EvidenceRef:
+    data = e.model_dump(mode="json")
+    if data.get("source", "document") == "document" and data.get("quote") is None and data.get("value") is None:
+        data["value"] = "policy"  # keep policy evidence valid even without a located quote
+    return c.EvidenceRef.model_validate(data)
+
+
+def _policy_facts(ctx: VerificationContext) -> PolicyFacts | None:
+    """Policy values for the policy-aware rules (V10 room rent, V11 waiting period)."""
+    s = ctx.policy_summary
+    if s is None:
+        return None
+    cap = s.room_rent_cap
+    return PolicyFacts(
+        associated_expenses=find_associated_expenses(ctx.clauses),
+        room_rent_cap_per_day=parse_amount(cap.value) if cap else None,
+        room_rent_cap_evidence=_evidence(cap.evidence) if cap else None,
+        waiting_periods=[WaitingFact(name=w.name, days=int(w.days), evidence=_evidence(w.evidence))
+                         for w in s.waiting_periods],
+    )
+
+
 def run_engine(ctx: VerificationContext) -> VerificationResult:
     from app.modules.verification import run_verification  # Person 2 (M3)
 
@@ -41,6 +65,9 @@ def run_engine(ctx: VerificationContext) -> VerificationResult:
                                 status=d.status) for d in ctx.documents if d.status != "failed"]
     claim = c.ClaimInput(claim_type=ctx.claim.claim_type.value, claimed_amount=ctx.claim.claimed_amount,
                          patient_name=ctx.claim.patient_name)
-    res = run_verification(_fields(ctx), documents, claim)
+    # the checklist is the one place that decides which documents a claim needs; plain-required items only
+    # (documents merely referenced by another file are reported by the referenced-document check)
+    required = [c.category for c in ctx.checklist if c.required and c.evidence is None]
+    res = run_verification(_fields(ctx), documents, claim, _policy_facts(ctx), required_documents=required)
     findings = [Finding.model_validate(f.model_dump(mode="json")) for f in res.findings]
     return VerificationResult(findings=findings, checks_passed=list(res.checks_passed))

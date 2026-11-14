@@ -22,8 +22,10 @@ const READINESS = {
 
 export interface ExtraTab {
   id: string;
-  label: string;
+  label: string | ((results: AnalysisResults) => string);
   render: (results: AnalysisResults) => ReactNode;
+  /** List this tab before the built-in ones and open it by default (e.g. Findings). */
+  first?: boolean;
 }
 
 /**
@@ -49,14 +51,16 @@ export function AnalysisView({
   const hasData = results.documents.length > 0;
   const reviewCount = results.fields.filter(needsReview).length;
   const openActions = results.action_plan.filter((a) => !a.done).length;
+  const extra = (t: ExtraTab) => ({ id: t.id, label: typeof t.label === "function" ? t.label(results) : t.label });
   const tabs = [
+    ...extraTabs.filter((t) => t.first).map(extra),
     { id: "actions", label: `Action plan${openActions ? ` (${openActions})` : ""}` },
     { id: "extracted", label: `Extracted data${reviewCount ? ` · ${reviewCount} to confirm` : ""}` },
     { id: "policy", label: "Policy" },
     { id: "checklist", label: "Checklist" },
-    ...extraTabs.map((t) => ({ id: t.id, label: t.label })),
+    ...extraTabs.filter((t) => !t.first).map(extra),
   ];
-  const [tab, setTab] = useState("actions");
+  const [tab, setTab] = useState(extraTabs.find((t) => t.first)?.id ?? "actions");
   const r = results.readiness_status ? READINESS[results.readiness_status] : null;
   const aiCalls = results.llm_calls.filter((c) => c.ok);
 

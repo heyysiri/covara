@@ -5,12 +5,15 @@ import type { EvidenceRef } from "@/types/results";
 
 /** Opens the original document at the cited page (browser PDF viewer supports #page=N). */
 export function EvidenceLink({ claimId, evidence }: { claimId: string; evidence: EvidenceRef }) {
-  if (evidence.source === "claim_form" || !evidence.document_id)
+  if (evidence.source !== "document" || !evidence.document_id)
     return (
       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
         <FileText className="size-3" aria-hidden />
-        Claim form{evidence.field ? ` · ${evidence.field.replace(/_/g, " ")}` : ""}
-        {evidence.value != null ? `: ${evidence.value}` : ""}
+        {evidence.source === "checklist" ? "Document checklist" : "Claim form"}
+        {evidence.field ? ` · ${evidence.field.replace(/_/g, " ")}` : ""}
+        {evidence.value != null
+          ? `: ${Array.isArray(evidence.value) ? evidence.value.join(", ") : typeof evidence.value === "number" ? evidence.value.toLocaleString("en-IN") : evidence.value}`
+          : ""}
       </span>
     );
   return (

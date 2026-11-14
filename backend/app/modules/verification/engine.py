@@ -15,6 +15,8 @@ from dataclasses import dataclass
 
 from app.schemas.contract import ClaimInput, DocumentInfo, ExtractedField, Finding, Severity
 
+from .config import DEFAULT_CONFIG, VerificationConfig
+from .policy_facts import PolicyFacts
 from .rules import RULES, Ctx
 
 _SEVERITY_ORDER = {Severity.HIGH: 0, Severity.MEDIUM: 1, Severity.LOW: 2}
@@ -28,9 +30,17 @@ class VerificationResult:
 
 
 def run_verification(
-    fields: list[ExtractedField], documents: list[DocumentInfo], claim: ClaimInput | None = None
+    fields: list[ExtractedField],
+    documents: list[DocumentInfo],
+    claim: ClaimInput | None = None,
+    policy: PolicyFacts | None = None,
+    required_documents: list[str] | None = None,
+    config: VerificationConfig = DEFAULT_CONFIG,
 ) -> VerificationResult:
-    ctx = Ctx(fields=fields, documents=documents, claim=claim or ClaimInput())
+    """Optional inputs: `policy` (without it V10/V11 are skipped), `required_documents` (the checklist's list; defaults
+    to the checklist rules for the claim type) and `config` (thresholds)."""
+    ctx = Ctx(fields=fields, documents=documents, claim=claim or ClaimInput(), policy=policy,
+              required_documents=required_documents, cfg=config)
     for rule in RULES:
         rule(ctx)
     findings = sorted(ctx.findings, key=lambda f: (not f.blocking, _SEVERITY_ORDER[f.severity], f.rule_id))

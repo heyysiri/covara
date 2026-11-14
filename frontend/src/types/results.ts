@@ -11,14 +11,14 @@ export type ActionGroup = "upload" | "verify_or_correct" | "policy_review" | "co
 
 /** A page of an uploaded document, or a value from the claim form (source = "claim_form"). */
 export interface EvidenceRef {
-  source: "document" | "claim_form";
+  source: "document" | "claim_form" | "checklist";
   document_id: string | null;
   filename: string | null;
   page_number: number | null;
   bbox: [number, number, number, number] | null;
   quote: string | null;
-  field?: string | null; // claim_form only, e.g. "claimed_amount"
-  value?: string | number | null; // claim_form only
+  field?: string | null; // claim_form / checklist only, e.g. "claimed_amount"
+  value?: string | number | null; // claim_form / checklist only
 }
 
 export interface ExtractedField {

@@ -19,6 +19,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { DeleteClaimButton } from "@/features/intake/DeleteClaimButton";
 import { Checklist } from "@/features/intake/Checklist";
 import { AnalysisView } from "@/features/pipeline/AnalysisView";
+import { buildExtraTabs } from "@/features/workspace/extraTabs";
 import { useAnalysis } from "@/features/pipeline/useAnalysis";
 import {
   ApiError,
@@ -506,6 +507,7 @@ export function DocumentUpload() {
               onRecheck={analysis.start}
               onReview={analysis.review}
               onResults={analysis.setResults}
+              extraTabs={buildExtraTabs(claimId)}
             />
           )}
         </CardContent>

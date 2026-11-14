@@ -127,8 +127,3 @@ def list_documents(claim_id: str) -> list[DocumentOut]:
 
 # --- Report / packet are Person 2's module (M7). Analysis routes live in app/modules/pipeline/router.py.
 
-
-@router.get("/{claim_id}/report")
-def get_report(claim_id: str) -> None:
-    _get_claim_or_404(claim_id)
-    raise HTTPException(status_code=501, detail=NOT_IMPLEMENTED)

@@ -9,7 +9,7 @@ AI-powered insurance claim readiness and intelligence. Hackathon scope: **health
 ## Status
 
 **Phase 1 (skeleton) is done.** **Person 1 modules are done** (branch `person1-pipeline`): intake (M1), extraction (M2), policy intelligence (M4), action plan (M6) and the LangGraph pipeline (M8).
-Pending (Person 2): verification rules (M3, plugs in via `app/modules/verification/service.py::run_verification`, see `app/modules/pipeline/context.py`), evidence viewer (M5), report/packet (M7, `report` still returns `501`), workspace shell/demo data (M9).
+Person 2 modules: verification rules (M3, `app/modules/verification`, wired in through `pipeline/verify_adapter.py`), evidence viewer (M5, `app/modules/evidence`), report and claim packet (M7, `app/modules/packet`). Still to do: demo claims A and C, Sarvam document, browser walkthrough.
 
 **AI provider: Claude, with or without an API key.** If `ANTHROPIC_API_KEY` is set, the backend calls the Claude API directly. If not, it uses your **logged-in Claude Code session** through its headless mode (`claude -p`, auto-detected on PATH or in the VS Code extension; override with `CLAUDE_CLI_PATH`, disable with `CLAUDE_USE_CLI=false`). Either way Claude reads the PDF/image itself and returns schema-validated JSON; rules top up anything it misses, and every value carries document, page and a quote located in the page text. Gemini and Groq remain optional fallbacks. With no provider at all, rule-based extraction over the PDF text layer still runs (weaker, see below). Calls through the Claude Code session are for local dev and demos, not production.
 
@@ -117,7 +117,10 @@ cd frontend && npm run lint && npm run build
 | GET | `/claims/{id}/policy` | Policy summary + clause chunks with pages. |
 | GET/POST | `/claims/{id}/review` | Low-confidence critical fields / confirm or correct values and re-check. |
 | GET | `/claims/{id}/actions` · PATCH `/claims/{id}/actions/{action_id}` | Action plan / tick an action done. |
-| GET | `/claims/{id}/report` | `501`, Person 2 (M7). |
+| GET | `/claims/{id}/report` | Readiness report PDF (9 sections). `409` until an analysis has completed. |
+| GET | `/claims/{id}/packet` | Claim packet PDF: cover + summary, document index, evidence references, then the originals with bookmarks. Stamped INCOMPLETE on every page while blocking items are open. |
+| GET | `/claims/{id}/packet.json` | `claim.json`: the same facts as structured data (shaped to map to a health-claims exchange later; not FHIR). |
+| GET | `/claims/{id}/documents/{doc_id}/pages/{n}/image` | Page as PNG with the cited text highlighted. Query: `highlight` (repeatable quote), `bbox` (`x0,y0,x1,y1`, 0-1), `dpi`. Headers say how many highlights were found. |
 
 Upload rules: PDF / PNG / JPG only, max `MAX_UPLOAD_MB` (default 20) per file. The file's leading bytes must match its extension. Files are stored on disk at `backend/uploads/<claim_id>/<document_id>.<ext>` under server-generated names. The original filename is kept as sanitized metadata only. Claims are held **in memory**, so restarting the backend clears them.
 
