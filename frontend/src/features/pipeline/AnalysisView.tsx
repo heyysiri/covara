@@ -1,14 +1,17 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
-import { AlertTriangle, CheckCircle2, Info, Loader2, RefreshCw, XCircle } from "lucide-react";
+import { useState } from "react";
+import { AlertTriangle, CheckCircle2, Info, ListChecks, Loader2, MoreHorizontal, Package, RefreshCw, Search, XCircle } from "lucide-react";
 
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { ActionPlan } from "@/features/actions/ActionPlan";
 import { ExtractedData, needsReview } from "@/features/extraction/ExtractedData";
+import { SecondaryButton } from "@/features/flow/AppShell";
 import { Checklist } from "@/features/intake/Checklist";
+import { DeleteClaimButton } from "@/features/intake/DeleteClaimButton";
+import { PacketPanel } from "@/features/packet/PacketPanel";
 import { PolicyPanel } from "@/features/policy/PolicyPanel";
+import { FindingsPanel } from "@/features/verification/FindingsPanel";
 import { ListenButton } from "@/features/voice/ListenButton";
 import { useI18n, useLocalized } from "@/i18n";
 import type { FieldEdit } from "@/lib/api";
@@ -16,17 +19,12 @@ import type { AnalysisResults } from "@/types/results";
 
 import { AnalysisProgress } from "./AnalysisProgress";
 
-export interface ExtraTab {
-  id: string;
-  label: string | ((results: AnalysisResults) => string);
-  render: (results: AnalysisResults) => ReactNode;
-  /** List this tab before the built-in ones and open it by default (e.g. Findings). */
-  first?: boolean;
-}
+type Tab = "todo" | "findings" | "packet" | "more";
+type More = "extracted" | "policy" | "checklist";
 
 /**
- * Person 1 workspace panels: readiness, checklist, extracted data, policy, action plan.
- * Person 2 can pass extra tabs (Findings / Evidence / Packet) via `extraTabs`.
+ * The results screen of the claim flow. Mobile first: a status card, then one section at a time, switched from a bottom
+ * tab bar (To do / Findings / Packet / More). "To do" comes first because the point is what the policyholder does next.
  */
 export function AnalysisView({
   claimId,
@@ -34,50 +32,49 @@ export function AnalysisView({
   onRecheck,
   onReview,
   onResults,
-  extraTabs = [],
+  onAddDocuments,
+  onDeleted,
 }: {
   claimId: string;
   results: AnalysisResults;
   onRecheck: () => void;
   onReview: (edits: FieldEdit[]) => void;
   onResults: (r: AnalysisResults) => void;
-  extraTabs?: ExtraTab[];
+  onAddDocuments: () => void;
+  onDeleted: () => void;
 }) {
   const { t } = useI18n();
   const READINESS = {
-    ready: { label: t("Ready to submit"), icon: CheckCircle2, cls: "border-emerald-600/40 bg-emerald-600/5 text-emerald-700 dark:text-emerald-400" },
-    needs_attention: { label: t("Needs attention"), icon: AlertTriangle, cls: "border-amber-500/50 bg-amber-500/5 text-amber-700 dark:text-amber-400" },
-    incomplete: { label: t("Incomplete"), icon: XCircle, cls: "border-destructive/40 bg-destructive/5 text-destructive" },
+    ready: { label: t("Ready to submit"), icon: CheckCircle2, cls: "border-emerald-500/40 bg-emerald-50 text-emerald-900", icon_cls: "text-emerald-600" },
+    needs_attention: { label: t("Needs attention"), icon: AlertTriangle, cls: "border-amber-500/50 bg-amber-50 text-amber-950", icon_cls: "text-amber-600" },
+    incomplete: { label: t("Incomplete"), icon: XCircle, cls: "border-destructive/40 bg-red-50 text-red-950", icon_cls: "text-destructive" },
   } as const;
-  const loc = useLocalized([
+  const [explanationL, errorL, packetL, disclaimerL, ...warningsL] = useLocalized([
     results.readiness_explanation,
     results.error ?? "",
     results.packet_status ?? "",
     results.disclaimer,
     ...results.warnings,
   ]);
-  const [explanationL, errorL, packetL, disclaimerL, ...warningsL] = loc;
+  const [tab, setTab] = useState<Tab>("todo");
+  const [more, setMore] = useState<More>("extracted");
   const running = results.status === "processing";
-  const hasData = results.documents.length > 0;
-  const reviewCount = results.fields.filter(needsReview).length;
+  const open = results.findings.filter((f) => f.status === "open");
+  const blocking = open.filter((f) => f.blocking).length;
   const openActions = results.action_plan.filter((a) => !a.done).length;
-  const extra = (x: ExtraTab) => ({ id: x.id, label: typeof x.label === "function" ? x.label(results) : x.label });
-  const tabs = [
-    ...extraTabs.filter((x) => x.first).map(extra),
-    { id: "actions", label: `${t("Action plan")}${openActions ? ` (${openActions})` : ""}` },
-    { id: "extracted", label: `${t("Extracted data")}${reviewCount ? ` · ${t("{n} to confirm", { n: reviewCount })}` : ""}` },
-    { id: "policy", label: t("Policy") },
-    { id: "checklist", label: t("Checklist") },
-    ...extraTabs.filter((x) => !x.first).map(extra),
-  ];
-  const [tab, setTab] = useState(extraTabs.find((x) => x.first)?.id ?? "actions");
+  const reviewCount = results.fields.filter(needsReview).length;
   const r = results.readiness_status ? READINESS[results.readiness_status] : null;
   const aiCalls = results.llm_calls.filter((c) => c.ok);
 
+  const nav: { id: Tab; label: string; icon: typeof ListChecks; badge?: number }[] = [
+    { id: "todo", label: t("To do"), icon: ListChecks, badge: openActions },
+    { id: "findings", label: t("Findings"), icon: Search, badge: open.length },
+    { id: "packet", label: t("Packet"), icon: Package },
+    { id: "more", label: t("More"), icon: MoreHorizontal, badge: reviewCount },
+  ];
+
   return (
     <div className="space-y-4">
-      {running && <AnalysisProgress results={results} />}
-
       {results.status === "failed" && (
         <Alert variant="destructive">
           <AlertTitle>{t("Analysis failed")}</AlertTitle>
@@ -85,21 +82,48 @@ export function AnalysisView({
         </Alert>
       )}
 
-      {hasData && r && (
-        <div className={`flex flex-wrap items-start gap-3 rounded-lg border p-4 ${r.cls}`}>
-          <r.icon className="mt-0.5 size-5 shrink-0" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="font-semibold">{r.label}</p>
-            <p className="text-sm text-foreground/80">{explanationL}</p>
-            {results.packet_status && (
-              <p className="mt-1 text-xs font-medium text-foreground/70">{t("Claim packet: {status}", { status: packetL })}</p>
-            )}
-          </div>
-          <ListenButton claimId={claimId} disabled={running} />
-          <Button variant="outline" size="sm" onClick={onRecheck} disabled={running}>
-            {running ? <Loader2 className="animate-spin" /> : <RefreshCw />} {t("Re-check")}
-          </Button>
+      {running && (
+        <div className="rounded-2xl border bg-card p-4">
+          <AnalysisProgress results={results} />
         </div>
+      )}
+
+      {r && tab !== "todo" && (
+        <section className={`flex flex-wrap items-center gap-x-2 gap-y-1 rounded-2xl border px-4 py-3 ${r.cls}`} aria-live="polite">
+          <r.icon className={`size-5 shrink-0 ${r.icon_cls}`} aria-hidden />
+          <span className="font-semibold">{r.label}</span>
+          <span className="ml-auto text-xs font-medium opacity-80">
+            {t("{n} to fix before submitting", { n: blocking })} · {t("{n} to review", { n: open.length - blocking })}
+          </span>
+        </section>
+      )}
+
+      {r && tab === "todo" && (
+        <section className={`rounded-2xl border p-4 ${r.cls}`} aria-live="polite">
+          <div className="flex items-start gap-3">
+            <r.icon className={`mt-0.5 size-7 shrink-0 ${r.icon_cls}`} aria-hidden />
+            <div className="min-w-0 flex-1">
+              <h2 className="text-lg font-semibold">{r.label}</h2>
+              <p className="mt-0.5 text-sm opacity-90">{explanationL}</p>
+            </div>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-2 text-xs font-medium">
+            <span className="rounded-full bg-white/70 px-2.5 py-1">{t("{n} to fix before submitting", { n: blocking })}</span>
+            <span className="rounded-full bg-white/70 px-2.5 py-1">{t("{n} to review", { n: open.length - blocking })}</span>
+          </div>
+          {results.packet_status && <p className="mt-2 text-xs font-medium opacity-80">{t("Claim packet: {status}", { status: packetL })}</p>}
+          <div className="mt-3 flex items-center gap-2">
+            <ListenButton claimId={claimId} disabled={running} />
+            <button
+              type="button"
+              onClick={onRecheck}
+              disabled={running}
+              className="ml-auto flex h-10 items-center gap-1.5 rounded-full border border-current/25 bg-white/70 px-4 text-sm font-semibold disabled:opacity-50"
+            >
+              {running ? <Loader2 className="size-4 animate-spin" /> : <RefreshCw className="size-4" />} {t("Re-check")}
+            </button>
+          </div>
+        </section>
       )}
 
       {results.warnings.length > 0 && (
@@ -112,42 +136,72 @@ export function AnalysisView({
         </ul>
       )}
 
-      {hasData && (
-        <>
-          <div role="tablist" className="flex flex-wrap gap-1 border-b">
-            {tabs.map((x) => (
-              <button
-                key={x.id}
-                role="tab"
-                aria-selected={tab === x.id}
-                onClick={() => setTab(x.id)}
-                className={`-mb-px border-b-2 px-3 py-2 text-sm ${
-                  tab === x.id ? "border-primary font-medium" : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {x.label}
-              </button>
-            ))}
+      <div role="tabpanel" aria-label={nav.find((n) => n.id === tab)?.label}>
+        {tab === "todo" && <ActionPlan claimId={claimId} results={results} onChange={(action_plan) => onResults({ ...results, action_plan })} />}
+        {tab === "findings" && <FindingsPanel claimId={claimId} results={results} />}
+        {tab === "packet" && <PacketPanel claimId={claimId} results={results} />}
+        {tab === "more" && (
+          <div className="space-y-4">
+            <div className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" role="tablist">
+              {([["extracted", t("Extracted data")], ["policy", t("Policy")], ["checklist", t("Checklist")]] as [More, string][]).map(([id, label]) => (
+                <button
+                  key={id}
+                  role="tab"
+                  aria-selected={more === id}
+                  onClick={() => setMore(id)}
+                  className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium ${more === id ? "border-navy bg-navy text-white" : "bg-card text-navy"}`}
+                >
+                  {label}
+                  {id === "extracted" && reviewCount > 0 && ` · ${t("{n} to confirm", { n: reviewCount })}`}
+                </button>
+              ))}
+            </div>
+            {more === "extracted" && <ExtractedData claimId={claimId} results={results} onReview={onReview} busy={running} />}
+            {more === "policy" && <PolicyPanel claimId={claimId} results={results} />}
+            {more === "checklist" && <Checklist items={results.checklist} />}
+            <SecondaryButton onClick={onAddDocuments}>{t("Add or change documents")}</SecondaryButton>
+            <div className="flex justify-center">
+              <DeleteClaimButton claimId={claimId} onDeleted={onDeleted} />
+            </div>
           </div>
-          <div role="tabpanel">
-            {tab === "actions" && (
-              <ActionPlan claimId={claimId} results={results} onChange={(action_plan) => onResults({ ...results, action_plan })} />
-            )}
-            {tab === "extracted" && <ExtractedData claimId={claimId} results={results} onReview={onReview} busy={running} />}
-            {tab === "policy" && <PolicyPanel claimId={claimId} results={results} />}
-            {tab === "checklist" && <Checklist items={results.checklist} />}
-            {extraTabs.find((x) => x.id === tab)?.render(results)}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {aiCalls.length > 0
-              ? aiCalls.length === 1
-                ? t("Read with {providers} (1 model call, {cached} from cache).", { providers: results.providers_used.join(", "), cached: aiCalls.filter((c) => c.cached).length })
-                : t("Read with {providers} ({n} model calls, {cached} from cache).", { providers: results.providers_used.join(", "), n: aiCalls.length, cached: aiCalls.filter((c) => c.cached).length })
-              : t("Read with Covara's rule-based extractor (no AI provider configured).")}{" "}
-            {t("Every value links to its source page.")} {disclaimerL}
-          </p>
-        </>
-      )}
+        )}
+      </div>
+
+      <p className="pt-2 text-xs text-muted-foreground">
+        {aiCalls.length > 0
+          ? t("Read with {providers}.", { providers: results.providers_used.join(", ") })
+          : t("Read with Covara's rule-based extractor (no AI provider configured).")}{" "}
+        {t("Every value links to its source page.")} {disclaimerL}
+      </p>
+
+      <nav
+        aria-label={t("Results")}
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto grid w-full max-w-[480px] grid-cols-4 border-t bg-card/95 pt-1.5 shadow-[0_-4px_16px_rgba(0,46,110,0.08)] backdrop-blur pb-[max(0.5rem,env(safe-area-inset-bottom))]"
+      >
+        {nav.map(({ id, label, icon: Icon, badge }) => {
+          const on = tab === id;
+          return (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setTab(id);
+                window.scrollTo({ top: 0, behavior: "smooth" });
+              }}
+              aria-current={on ? "page" : undefined}
+              className={`relative flex flex-col items-center gap-0.5 py-1.5 text-[11px] ${on ? "font-semibold text-navy" : "text-muted-foreground"}`}
+            >
+              <span className="relative">
+                <Icon className={`size-6 ${on ? "text-brand" : ""}`} aria-hidden />
+                {!!badge && (
+                  <span className="absolute -right-2.5 -top-1.5 min-w-4 rounded-full bg-[#ff4f6d] px-1 text-center text-[10px] font-bold leading-4 text-white">{badge}</span>
+                )}
+              </span>
+              {label}
+            </button>
+          );
+        })}
+      </nav>
     </div>
   );
 }
